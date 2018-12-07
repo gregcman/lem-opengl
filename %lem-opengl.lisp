@@ -381,6 +381,39 @@
   (setf sprite-chain::*sprites* (sprite-chain:make-sprite-chain))
   (bottom-layer))
 
+(defparameter *fg-default-really* 0)
+(defparameter *bg-default-really* #xffffff)
+
+(defparameter *fg-default* *fg-default-really*)
+(defparameter *bg-default* *bg-default-really*)
+
+(defparameter *pairs* (let ((pairs (make-hash-table)))
+			(setf (gethash 0 pairs)
+			      (cons *fg-default*
+				    *bg-default*) ;;;;FIXME whats white and black for default? short?
+			      )
+			pairs))
+
+(defun ncurses-init-pair (pair-counter fg bg)
+  (setf (gethash pair-counter *pairs*)
+	(cons fg bg)))
+(defun ncurses-color-pair (pair-counter)
+  (gethash pair-counter *pairs*))
+
+(defun ncurses-pair-content (pair-counter)
+  (let ((pair (ncurses-color-pair pair-counter)))
+    (values (car pair)
+	    (cdr pair))))
+
+(defun ncurses-assume-default-color (fg bg)
+  ;;;;how ncurses works. see https://users-cs.au.dk/sortie/sortix/release/nightly/man/man3/assume_default_colors.3.html
+  (setf *fg-default* (if (= fg -1)
+			 *fg-default-really*
+			 fg)
+	*bg-default* (if (= bg -1)
+			 *bg-default-really*
+			 bg)))
+
 
 #+nil
 (let ((program (getfnc 'flat-shader)))

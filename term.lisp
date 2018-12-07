@@ -13,6 +13,7 @@
            :disable-mouse))
 (in-package :lem.term)
 
+#+nil
 (cffi:defcvar ("COLOR_PAIRS" *COLOR-PAIRS* :library charms/ll::libcurses) :int)
 
 ;; mouse mode
@@ -42,6 +43,7 @@
 (defun init-colors (n)
   (let ((counter 0))
     (flet ((add-color (r g b)
+	     #+nil
              (when (<= 8 counter)
                (charms/ll:init-color counter
                                      (round (* r 1000/255))
@@ -364,9 +366,12 @@
 
 (defun init-pair (pair-color)
   (incf *pair-counter*)
-  (charms/ll:init-pair *pair-counter* (car pair-color) (cdr pair-color))
+  ;;(charms/ll:init-pair *pair-counter* (car pair-color) (cdr pair-color))
+  (%lem-opengl::ncurses-init-pair *pair-counter* (car pair-color) (cdr pair-color))
   (setf (gethash pair-color *color-pair-table*)
-        (charms/ll:color-pair *pair-counter*)))
+	(%lem-opengl::ncurses-color-pair *pair-counter*)
+        ;;(charms/ll:color-pair *pair-counter*)
+	))
 
 (defun get-color-pair (fg-color-name bg-color-name)
   (let* ((fg-color (if (null fg-color-name) -1 (get-color fg-color-name)))
@@ -388,6 +393,8 @@
               (cffi:mem-ref b :short))))))
 
 (defun get-default-colors ()
+  (%lem-opengl::ncurses-pair-content 0)
+  #+nil
   (cffi:with-foreign-pointer (f (cffi:foreign-type-size '(:pointer :short)))
     (cffi:with-foreign-pointer (b (cffi:foreign-type-size '(:pointer :short)))
       (charms/ll:pair-content 0 f b)
@@ -395,8 +402,11 @@
               (cffi:mem-ref b :short)))))
 
 (defun set-default-color (foreground background)
+  ;;;;-1 for values mean defaults.
   (let ((fg-color (if foreground (get-color foreground) -1))
         (bg-color (if background (get-color background) -1)))
+    (%lem-opengl::ncurses-assume-default-color fg-color bg-color)
+    #+nil
     (charms/ll:assume-default-colors fg-color
                                      bg-color)))
 
