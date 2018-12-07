@@ -1,14 +1,14 @@
-(defpackage :lem-ncurses
+(defpackage :lem-sucle
   (:use :cl :lem))
-(in-package :lem-ncurses)
+(in-package :lem-sucle)
 
-(defclass ncurses (lem:implementation)
+(defclass sucle (lem:implementation)
   ()
   (:default-initargs
    :native-scroll-support nil
    :redraw-after-modifying-floating-window t))
 
-(setf *implementation* (make-instance 'ncurses))
+(setf *implementation* (make-instance 'sucle))
 
 (define-condition exit-editor (editor-condition)
   ((value
