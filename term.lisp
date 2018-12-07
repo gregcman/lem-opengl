@@ -26,10 +26,12 @@
   *mouse-mode*)
 (defun enable-mouse ()
   (setf *mouse-mode* 1)
+  ;;FIXME- mouse?
   (charms/ll:mousemask (logior charms/ll:all_mouse_events
                                charms/ll:report_mouse_position)))
 (defun disable-mouse ()
   (setf *mouse-mode* 0)
+  ;;FIXME - mouse?
   (charms/ll:mousemask 0))
 
 
@@ -414,7 +416,9 @@
   (multiple-value-bind (fg found) (get-color name)
     (let ((bg (nth-value 1 (get-default-colors))))
       (cond (found
-             (charms/ll:assume-default-colors fg bg)
+             (;;charms/ll:assume-default-colors
+	      %lem-opengl::ncurses-assume-default-color
+	      fg bg)
              t)
             (t
              (error "Undefined color: ~A" name))))))
@@ -423,7 +427,9 @@
   (multiple-value-bind (bg found) (get-color name)
     (let ((fg (nth-value 0 (get-default-colors))))
       (cond (found
-             (charms/ll:assume-default-colors fg bg)
+             (;;charms/ll:assume-default-colors
+	      %lem-opengl::ncurses-assume-default-color
+	      fg bg)
              t)
             (t
              (error "Undefined color: ~A" name))))))
