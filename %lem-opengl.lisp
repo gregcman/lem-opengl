@@ -454,6 +454,18 @@
 
 ;;;FIXME add default window for ncurses like stdscr
 
+(defun ncurses-mvwin (win x y)
+  "Calling mvwin moves the window so that the upper left-hand corner is at position (x, y). If the move would cause the window to be off the screen, it is an error and the window is not moved. Moving subwindows is allowed, but should be avoided."
+  ;;;FIXME: detect off screen 
+  (setf (win-x win) x
+	(win-y win) y))
+
+(defun ncurses-wresize (win height width)
+  (setf (win-lines win) height
+	(win-cols win) width))
+
+(defparameter *mouse-enabled-p* nil)
+
 
 #+nil
 (let ((program (getfnc 'flat-shader)))

@@ -25,14 +25,20 @@
 (defun get-mouse-mode ()
   *mouse-mode*)
 (defun enable-mouse ()
-  (setf *mouse-mode* 1)
-  ;;FIXME- mouse?
-  (charms/ll:mousemask (logior charms/ll:all_mouse_events
-                               charms/ll:report_mouse_position)))
+  (setf %lem-opengl::*mouse-enabled-p* t)
+  #+nil
+  (progn
+    (setf *mouse-mode* 1)
+    ;;FIXME- mouse?
+    (charms/ll:mousemask (logior charms/ll:all_mouse_events
+				 charms/ll:report_mouse_position))))
 (defun disable-mouse ()
-  (setf *mouse-mode* 0)
-  ;;FIXME - mouse?
-  (charms/ll:mousemask 0))
+  (setf %lem-opengl::*mouse-enabled-p* nil)
+  #+nil
+  (progn
+    (setf *mouse-mode* 0)
+    ;;FIXME - mouse?
+    (charms/ll:mousemask 0)))
 
 
 (defvar *colors*)
@@ -445,36 +451,40 @@
 
 ;;;
 
-(cffi:defcfun "fopen" :pointer (path :string) (mode :string))
-(cffi:defcfun "fclose" :int (fp :pointer))
-(cffi:defcfun "fileno" :int (fd :pointer))
+;;(cffi:defcfun "fopen" :pointer (path :string) (mode :string))
+;;(cffi:defcfun "fclose" :int (fp :pointer))
+;;(cffi:defcfun "fileno" :int (fd :pointer))
 
+#+nil
 (cffi:defcstruct winsize
   (ws-row :unsigned-short)
   (ws-col :unsigned-short)
   (ws-xpixel :unsigned-short)
   (ws-ypixel :unsigned-short))
 
+#+nil
 (cffi:defcfun ioctl :int
   (fd :int)
   (cmd :int)
   &rest)
 
-(defvar *tty-name* nil)
-(defvar *term-io* nil)
+;;(defvar *tty-name* nil)
+;;(defvar *term-io* nil)
 
+#+nil
 (defun resize-term ()
   (when *term-io*
     (cffi:with-foreign-object (ws '(:struct winsize))
       (when (= 0 (ioctl (fileno *term-io*) 21523 :pointer ws))
         (cffi:with-foreign-slots ((ws-row ws-col) ws (:struct winsize))
           (charms/ll:resizeterm ws-row ws-col))))))
-
+#+nil
 (defun term-init-tty (tty-name)
   (let* ((io (fopen tty-name "r+")))
     (setf *term-io* io)
     (cffi:with-foreign-string (term "xterm")
       (charms/ll:newterm term io io))))
+
 
 (defun term-init ()
   #+(or (and ccl unix) (and lispworks unix))
@@ -492,6 +502,7 @@
   ;; enable default color code (-1)
   #+win32(charms/ll:use-default-colors)
   (init-colors 256)
+  ;;;FIXME: find out what all these options do
   ;;(set-default-color nil nil)
   ;;(charms/ll:noecho)
   ;;(charms/ll:cbreak)
@@ -536,6 +547,7 @@
     (enable-mouse))
   t)
 
+#+nil
 (defun term-set-tty (tty-name)
   (setf *tty-name* tty-name))
 

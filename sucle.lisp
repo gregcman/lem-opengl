@@ -405,23 +405,33 @@
 (defmethod lem-if:set-view-size ((implementation sucle) view width height)
   (setf (ncurses-view-width view) width)
   (setf (ncurses-view-height view) height)
-  (charms/ll:wresize (ncurses-view-scrwin view) height width)
+  (;;charms/ll:wresize
+   %lem-opengl::ncurses-wresize
+   (ncurses-view-scrwin view) height width)
   (when (ncurses-view-modeline-scrwin view)
-    (charms/ll:mvwin (ncurses-view-modeline-scrwin view)
-                     (+ (ncurses-view-y view) height)
-                     (ncurses-view-x view))
-    (charms/ll:wresize (ncurses-view-modeline-scrwin view)
-                       (minibuffer-window-height)
-                       width)))
+    (;;charms/ll:mvwin
+     %lem-opengl::ncurses-mvwin
+     (ncurses-view-modeline-scrwin view)
+     (+ (ncurses-view-y view) height)
+     (ncurses-view-x view))
+    (;;charms/ll:wresize
+     %lem-opengl::ncurses-wresize
+     (ncurses-view-modeline-scrwin view)
+     (minibuffer-window-height)
+     width)))
 
 (defmethod lem-if:set-view-pos ((implementation sucle) view x y)
   (setf (ncurses-view-x view) x)
   (setf (ncurses-view-y view) y)
-  (charms/ll:mvwin (ncurses-view-scrwin view) y x)
+  (;;charms/ll:mvwin
+   %lem-opengl::ncurses-mvwin
+   (ncurses-view-scrwin view) y x)
   (when (ncurses-view-modeline-scrwin view)
-    (charms/ll:mvwin (ncurses-view-modeline-scrwin view)
-                     (+ y (ncurses-view-height view))
-                     x)))
+    (;;charms/ll:mvwin
+     %lem-opengl::ncurses-mvwin
+     (ncurses-view-modeline-scrwin view)
+     (+ y (ncurses-view-height view))
+     x)))
 
 (defmethod lem-if:print ((implementation sucle) view x y string attribute)
   (let ((attr (attribute-to-bits attribute)))
