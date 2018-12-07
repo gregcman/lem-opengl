@@ -418,15 +418,41 @@
 			 bg)))
 
 (defparameter *ncurses-windows* (make-hash-table))
+(defun add-win (win)
+  (setf (gethash win *ncurses-windows*)
+	t))
+(defun remove-win (win)
+  (remhash win *ncurses-windows*))
 
 (struct-to-clos:struct->class
  (defstruct win
    lines
    COLS
    y
-   x))
+   x
+   keypad-p ;;see https://linux.die.net/man/3/keypad
+   clearok))
 
-(defun ncurses-newwin (nlines ncols begin-y begin-x))
+(defun ncurses-newwin (nlines ncols begin-y begin-x)
+  (add-win (make-win :lines nlines
+		     :cols ncols
+		     :y begin-y
+		     :x begin-x)))
+
+(defun ncurses-keypad (win value)
+  (setf (win-keypad-p win) value))
+(defun ncurses-delwin (win)
+  (remove-win win))
+
+(defun c-true (value)
+  (not (zerop value)))
+
+(defun ncurses-clearok (win value)
+  "If clearok is called with TRUE as argument, the next call to wrefresh with this window will clear the screen completely and redraw the entire screen from scratch. This is useful when the contents of the screen are uncertain, or in some cases for a more pleasing visual effect. If the win argument to clearok is the global variable curscr, the next call to wrefresh with any window causes the screen to be cleared and repainted from scratch. "
+  (setf (win-clearok win)
+	(c-true value)))
+
+;;;FIXME add default window for ncurses like stdscr
 
 
 #+nil

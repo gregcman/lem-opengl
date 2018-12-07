@@ -364,8 +364,13 @@
     ((implementation sucle) window x y width height use-modeline)
   (flet ((newwin (nlines ncols begin-y begin-x main-screen)
            (declare (ignore main-screen))
-           (let ((win (charms/ll:newwin nlines ncols begin-y begin-x)))
-             (when use-modeline (charms/ll:keypad win 1))
+           (let ((win
+		  (;;charms/ll:newwin
+		   %lem-opengl::ncurses-newwin
+		   nlines ncols begin-y begin-x)))
+             (when use-modeline (;;charms/ll:keypad
+				 %lem-opengl::ncurses-keypad
+				 win 1))
              ;; (when main-screen
              ;;   (charms/ll:idlok win 1)
              ;;   (charms/ll:scrollok win 1))
@@ -379,15 +384,23 @@
      :height height)))
 
 (defmethod lem-if:delete-view ((implementation sucle) view)
-  (charms/ll:delwin (ncurses-view-scrwin view))
+  (;;charms/ll:delwin
+   %lem-opengl::ncurses-delwin
+   (ncurses-view-scrwin view))
   (when (ncurses-view-modeline-scrwin view)
-    (charms/ll:delwin (ncurses-view-modeline-scrwin view))))
+    (;;charms/ll:delwin
+     %lem-opengl::ncurses-delwin
+     (ncurses-view-modeline-scrwin view))))
 
 (defmethod lem-if:clear ((implementation sucle) view)
   ;;;https://linux.die.net/man/3/clearok
-  (charms/ll:clearok (ncurses-view-scrwin view) 1)
+  (;;charms/ll:clearok
+   %lem-opengl::ncurses-clearok
+   (ncurses-view-scrwin view) 1)
   (when (ncurses-view-modeline-scrwin view)
-    (charms/ll:clearok (ncurses-view-modeline-scrwin view) 1)))
+    (;;charms/ll:clearok
+     %lem-opengl::ncurses-clearok
+     (ncurses-view-modeline-scrwin view) 1)))
 
 (defmethod lem-if:set-view-size ((implementation sucle) view width height)
   (setf (ncurses-view-width view) width)
