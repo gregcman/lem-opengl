@@ -1,4 +1,4 @@
-(asdf:defsystem #:sucle
+(asdf:defsystem #:%lem-opengl
   :depends-on (#:application
 	       #:utility
 	       #:sprite-chain
@@ -8,8 +8,7 @@
 	       #:character-modifier-bits
 	       #:uncommon-lisp
 	       #:quads
-	       #:point
-	       #:testbed)
+	       #:point)
   :serial t
   :components 
-  ((:file "basic0")))
+  ((:file "%lem-opengl")))
