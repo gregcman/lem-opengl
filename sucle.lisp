@@ -268,6 +268,39 @@
                  (get-key code))))))))
 
 (defun input-loop (editor-thread)
+  (application::just-main
+   (lambda ()
+     (block out
+       (handler-case
+	   (block cya
+	     (loop
+		(application:poll-app)
+		(%lem-opengl::per-frame)
+		(when (window:skey-j-p (window::keyval #\e))
+		  (application::quit))
+		#+nil
+		(handler-case
+		    (progn
+		      (unless (bt:thread-alive-p editor-thread) (return-from cya))
+		      (let ((event
+			     (cond ((window:skey-j-p (window::keyval #\e)) :abort))
+			      #+nil
+			      (get-event)))
+			(if (eq event :abort)
+			    (send-abort-event editor-thread nil)
+			    ;;(send-event event)
+			    )))
+		  #+sbcl
+		  (sb-sys:interactive-interrupt (c)
+		    (declare (ignore c))
+		    (send-abort-event editor-thread t)))))
+	 (exit-editor (c) (return-from out c)))))
+   :width (floor (* 80 %lem-opengl::*glyph-width*))
+   :height (floor (* 25 %lem-opengl::*glyph-height*))
+   :title ""))
+
+#+nil
+(defun input-loop (editor-thread)
   (handler-case
       (loop
         (handler-case
@@ -290,18 +323,17 @@
 (defmethod lem-if:invoke ((implementation sucle) function)
   (let ((result nil)
         (input-thread (bt:current-thread)))
-    (unwind-protect
-        (progn
-          (when (lem.term:term-init)
-            (let ((editor-thread
-                    (funcall function
-                             nil
-                             (lambda (report)
-                               (bt:interrupt-thread
-                                input-thread
-                                (lambda () (error 'exit-editor :value report)))))))
-              (setf result (input-loop editor-thread)))))
-      (lem.term:term-finalize))
+    (lem.term:term-init)
+    (let ((editor-thread
+	   (funcall function
+		    nil
+		    (lambda (report)
+		      (bt:interrupt-thread
+		       input-thread
+		       (lambda ()
+			 (print report)
+			 (error 'exit-editor :value report)))))))
+      (setf result (input-loop editor-thread)))
     (when (and (typep result 'exit-editor)
                (exit-editor-value result))
       (format t "~&~A~%" (exit-editor-value result)))))

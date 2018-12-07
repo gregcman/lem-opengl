@@ -463,6 +463,38 @@
 (defun term-init ()
   #+(or (and ccl unix) (and lispworks unix))
   (lem-setlocale/cffi:setlocale lem-setlocale/cffi:+lc-all+ "")
+  #+nil
+  (if *tty-name*
+      (term-init-tty *tty-name*)
+      (charms/ll:initscr))
+  #+nil
+  (when (zerop (charms/ll:has-colors))
+    (charms/ll:endwin)
+    (write-line "Please execute TERM=xterm-256color and try again.")
+    (return-from term-init nil))
+  ;;(charms/ll:start-color)
+  ;; enable default color code (-1)
+  #+win32(charms/ll:use-default-colors)
+  (init-colors 256)
+  ;;(set-default-color nil nil)
+  ;;(charms/ll:noecho)
+  ;;(charms/ll:cbreak)
+  ;;(charms/ll:raw)
+  ;;(charms/ll:nonl)
+  ;;(charms/ll:refresh)
+  ;;(charms/ll:keypad charms/ll:*stdscr* 1)
+  ;;(setf charms/ll::*escdelay* 0)
+  ;; (charms/ll:curs-set 0)
+  ;; for mouse
+  #+nil
+  (when (= *mouse-mode* 1)
+    (enable-mouse))
+  t)
+
+#+nil
+(defun term-init ()
+  #+(or (and ccl unix) (and lispworks unix))
+  (lem-setlocale/cffi:setlocale lem-setlocale/cffi:+lc-all+ "")
   (if *tty-name*
       (term-init-tty *tty-name*)
       (charms/ll:initscr))
@@ -491,6 +523,7 @@
 (defun term-set-tty (tty-name)
   (setf *tty-name* tty-name))
 
+#+nil
 (defun term-finalize ()
   (when *term-io*
     (fclose *term-io*)
