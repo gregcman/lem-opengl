@@ -417,6 +417,17 @@
 			 *bg-default-really*
 			 bg)))
 
+(defparameter *ncurses-windows* (make-hash-table))
+
+(struct-to-clos:struct->class
+ (defstruct win
+   lines
+   COLS
+   y
+   x))
+
+(defun ncurses-newwin (nlines ncols begin-y begin-x))
+
 
 #+nil
 (let ((program (getfnc 'flat-shader)))

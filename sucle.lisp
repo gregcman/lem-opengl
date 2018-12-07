@@ -384,6 +384,7 @@
     (charms/ll:delwin (ncurses-view-modeline-scrwin view))))
 
 (defmethod lem-if:clear ((implementation sucle) view)
+  ;;;https://linux.die.net/man/3/clearok
   (charms/ll:clearok (ncurses-view-scrwin view) 1)
   (when (ncurses-view-modeline-scrwin view)
     (charms/ll:clearok (ncurses-view-modeline-scrwin view) 1)))
