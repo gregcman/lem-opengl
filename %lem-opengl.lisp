@@ -15,6 +15,9 @@
 (defparameter *glyph-height* 16.0)
 (defparameter *glyph-width* 8.0)
 
+(defparameter *columns* 80)
+(defparameter *lines* 25)
+
 (defparameter *app* nil)
 (defun start ()
   (application:main
@@ -32,8 +35,8 @@
 	#+nil
 	(when (window:skey-j-p (window::keyval #\h))
 	  (toggle *app*))))
-   :width (floor (* 80 *glyph-width*))
-   :height (floor (* 25 *glyph-height*))
+   :width (floor (* *columns* *glyph-width*))
+   :height (floor (* *lines* *glyph-height*))
    :title ""))
 
 (defclass sprite ()

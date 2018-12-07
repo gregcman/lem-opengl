@@ -193,13 +193,14 @@
 (defkeycode "[resize]" #o632)
 (defkeycode "[event]" #o633)
 
-(defstruct ncurses-view
-  scrwin
-  modeline-scrwin
-  x
-  y
-  width
-  height)
+(struct-to-clos:struct->class
+ (defstruct ncurses-view
+   scrwin
+   modeline-scrwin
+   x
+   y
+   width
+   height))
 
 (defun attribute-to-bits (attribute-or-name)
   (let ((attribute (ensure-attribute attribute-or-name nil))
@@ -348,10 +349,16 @@
   (lem.term:term-set-background color-name))
 
 (defmethod lem-if:display-width ((implementation sucle))
-  (max 5 charms/ll:*cols*))
+  (max 5
+       %lem-opengl::*columns*
+       ;;charms/ll:*cols*
+       ))
 
 (defmethod lem-if:display-height ((implementation sucle))
-  (max 3 charms/ll:*lines*))
+  (max 3
+       %lem-opengl::*lines*
+       ;;charms/ll:*lines*
+       ))
 
 (defmethod lem-if:make-view
     ((implementation sucle) window x y width height use-modeline)
