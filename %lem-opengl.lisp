@@ -18,7 +18,8 @@
 (defparameter *columns* 80)
 (defparameter *lines* 25)
 
-(defparameter *app* nil)
+;;(defparameter *app* nil)
+#+nil
 (defun start ()
   (application:main
    (lambda ()
@@ -39,6 +40,35 @@
    :height (floor (* *lines* *glyph-height*))
    :title ""))
 
+(struct-to-clos:struct->class
+ (defstruct glyph
+   value
+   attributes))
+
+(defun print-glyph (stream glyph)
+  (write-char (glyph-value glyph) stream))
+(set-pprint-dispatch 'glyph 'print-glyph)
+
+(defparameter *clear-glyph* (make-glyph :value #\Space :attributes 0))
+
+
+(defun make-virtual-window ()
+  (let ((array (make-array *lines*)))
+    (dotimes (i (length array))
+      (setf (aref array i)
+	    (make-array *columns*
+			:initial-element *clear-glyph*)))
+    array))
+(defparameter *virtual-window* (make-virtual-window))
+(defparameter *virtual-window-lock* (bt:make-recursive-lock))
+(defun set-virtual-window (x y value)
+  (setf (aref (aref *virtual-window* y) x)
+	value))
+
+(defmacro with-virtual-window-lock (&body body)
+  `(bt:with-recursive-lock-held (*virtual-window-lock*)
+     ,@body))
+
 (defparameter *queue* nil)
 
 (deflazy event-queue ()
@@ -48,7 +78,8 @@
   (lparallel.queue:push-queue :resize event-queue)
   (setf *columns* (floor w *glyph-width*)
 	*lines* (floor h *glyph-height*))
-  (setf *virtual-window* (make-virtual-window)))
+  (with-virtual-window-lock
+    (setf *virtual-window* (make-virtual-window))))
 
 (defclass sprite ()
   ((bounding-box :accessor sprite.bounding-box
@@ -493,17 +524,6 @@
   (format stream "lines: ~a cols: ~a" (win-lines win) (win-cols win))
   (print-grid (win-data win) stream (win-cursor-x win) (win-cursor-y win)))
 
-(struct-to-clos:struct->class
- (defstruct glyph
-   value
-   attributes))
-
-(defun print-glyph (stream glyph)
-  (write-char (glyph-value glyph) stream))
-(set-pprint-dispatch 'glyph 'print-glyph)
-
-(defparameter *clear-glyph* (make-glyph :value #\Space :attributes 0))
-
 ;;window is an array of lines, for easy swapping and scrolling of lines. optimizations later
 (defun make-row (width)
   (make-array width :initial-element *clear-glyph*))
@@ -806,57 +826,49 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
   win)
 
 
-(defun make-virtual-window ()
-  (let ((array (make-array *lines*)))
-    (dotimes (i (length array))
-      (setf (aref array i)
-	    (make-array *columns*
-			:initial-element *clear-glyph*)))
-    array))
-(defparameter *virtual-window* (make-virtual-window))
-(defun set-virtual-window (x y value)
-  (setf (aref (aref *virtual-window* y) x)
-	value))
-
 (defun ncurses-wnoutrefresh (&optional (win *win*))
   ;;;FIXME:: follow https://linux.die.net/man/3/wnoutrefresh with "touching"
   ;;;different lines
   (when (win-clearok win)
     ;;FIXME -> clearok? what to do? check this: https://linux.die.net/man/3/clearok
     (setf (win-clearok win) nil))
-  (let ((grid (win-data win))
-	(xwin (win-x win))
-	(ywin (win-y win)))
-    (dotimes (y (win-lines win))
-      (dotimes (x (win-cols win))
-	(let ((glyph (ref-grid x y grid)))
-	  (let ((xdest (+ xwin x))
-		(ydest (+ ywin y)))
-	    (when (and (> *columns* xdest -1)
-		       (> *lines* ydest -1))
-	      (set-virtual-window xdest
-				  ydest
-				  glyph
-				  ))))))))
+  (with-virtual-window-lock
+    (let ((grid (win-data win))
+	  (xwin (win-x win))
+	  (ywin (win-y win))
+	  (columns (length (aref *virtual-window* 0)))
+	  (lines (length *virtual-window*)))
+      (dotimes (y (win-lines win))
+	(dotimes (x (win-cols win))
+	  (let ((glyph (ref-grid x y grid)))
+	    (let ((xdest (+ xwin x))
+		  (ydest (+ ywin y)))
+	      (when (and (> columns xdest -1)
+			 (> lines ydest -1))
+		(set-virtual-window xdest
+				    ydest
+				    glyph
+				    )))))))))
 
 (defparameter *update-p* nil)
 (defun ncurses-doupdate ()
   (setf *update-p* t)) ;;;when copied to opengl buffer, set again to nil
 
 (defun print-virtual-window (&optional (array *virtual-window*) (stream *standard-output*))
-  (let ((horizontal-bar (+ 2 (length (aref array 0)))))
-    (terpri stream)
-    (dotimes (i horizontal-bar) (write-char #\_ stream))
-    (dotimes (line (length array))
+  (with-virtual-window-lock
+    (let ((horizontal-bar (+ 2 (length (aref array 0)))))
       (terpri stream)
-      (write-char #\| stream)
-      (let ((line-array (aref array line)))
-	(dotimes (i (length line-array))
-	  (write-char (glyph-value (aref line-array i)) stream)))
-      (write-char #\| stream))
-    (terpri stream)
-    (dotimes (i horizontal-bar) (write-char #\_ stream))
-    (terpri stream)))
+      (dotimes (i horizontal-bar) (write-char #\_ stream))
+      (dotimes (line (length array))
+	(terpri stream)
+	(write-char #\| stream)
+	(let ((line-array (aref array line)))
+	  (dotimes (i (length line-array))
+	    (write-char (glyph-value (aref line-array i)) stream)))
+	(write-char #\| stream))
+      (terpri stream)
+      (dotimes (i horizontal-bar) (write-char #\_ stream))
+      (terpri stream))))
 
 
 #+nil
