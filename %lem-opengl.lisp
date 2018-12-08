@@ -172,11 +172,12 @@
   
 
   (glhelp:set-render-area 0 0 window:*width* window:*height*)
-  (gl:clear-color 0.5 0.25 0.25 0.0)
-  ;(gl:clear :color-buffer-bit)
+  (gl:clear-color 0.0 0.0 0.0 0.0)
+  ;;(gl:clear :color-buffer-bit)
   (gl:polygon-mode :front-and-back :fill)
   (gl:disable :cull-face)
   (gl:disable :blend)
+
   (render-stuff))
 
 (defun update-bounds (sprite)
@@ -255,8 +256,8 @@
 
 (defun render-stuff ()
   (text-sub::with-data-shader (uniform rebase)
-    (gl:clear :color-buffer-bit)
-    (gl:disable :depth-test)
+  ;;  (gl:clear :color-buffer-bit)
+ ;;   (gl:disable :depth-test)
 
     ;;"sprites"
     #+nil
@@ -294,6 +295,7 @@
     
     (rebase -128.0 -128.0))
   (gl:point-size 1.0)
+  
   (gl:with-primitives :points
     (opengl-immediate::mesh-vertex-color))
   (text-sub::with-text-shader (uniform)
@@ -303,8 +305,12 @@
      nil)   
     (glhelp::bind-default-framebuffer)
     (glhelp:set-render-area 0 0 (getfnc 'application::w) (getfnc 'application::h))
-    (gl:enable :blend)
-    (gl:blend-func :src-alpha :one-minus-src-alpha)
+
+    #+nil
+    (progn
+      (gl:enable :blend)
+      (gl:blend-func :src-alpha :one-minus-src-alpha))
+
     (gl:call-list (glhelp::handle (getfnc 'text-sub::fullscreen-quad)))))
 
 (defun draw-glyphs-array (x y array)

@@ -288,15 +288,16 @@
 	   (block cya
 	     (text-sub::change-color-lookup
 	      ;;'text-sub::color-fun
-	      ;;'lem-sucle::color-fun
-	      ;;#+nil
+	      'lem-sucle::color-fun
+	      #+nil
 	      (lambda (n)
 		(values-list
 		 (mapcar #'utility::floatify
 			 (nbutlast (aref lem.term::*colors* n)))))
 	      )
 	     (application::refresh '%lem-opengl::virtual-window)
-	     (application::refresh '%lem-opengl::event-queue)	      
+	     (application::refresh '%lem-opengl::event-queue)
+	     (window::set-vsync t)
 	     (loop
 		(application::getfnc '%lem-opengl::virtual-window)
 		(application::getfnc '%lem-opengl::event-queue)
