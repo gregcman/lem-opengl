@@ -477,7 +477,8 @@
   (add-win (make-win :lines nlines
 		     :cols ncols
 		     :y begin-y
-		     :x begin-x)))
+		     :x begin-x
+		     :grid (make-grid nlines ncols))))
 
 (defun ncurses-keypad (win value)
   (setf (win-keypad-p win) value))
