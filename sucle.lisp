@@ -458,11 +458,15 @@
      (ncurses-view-modeline-scrwin view) attr)))
 
 (defmethod lem-if:clear-eol ((implementation sucle) view x y)
-  (charms/ll:wmove (ncurses-view-scrwin view) y x)
+  (;;charms/ll:wmove
+   %lem-opengl::ncurses-wmove
+   (ncurses-view-scrwin view) y x)
   (charms/ll:wclrtoeol (ncurses-view-scrwin view)))
 
 (defmethod lem-if:clear-eob ((implementation sucle) view x y)
-  (charms/ll:wmove (ncurses-view-scrwin view) y x)
+  (;;charms/ll:wmove
+   %lem-opengl::ncurses-wmove
+   (ncurses-view-scrwin view) y x)
   (charms/ll:wclrtobot (ncurses-view-scrwin view)))
 
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
@@ -481,10 +485,16 @@
 (defmethod lem-if:update-display ((implementation sucle))
   (let ((scrwin (ncurses-view-scrwin (window-view (current-window)))))
     (if (lem::covered-with-floating-window-p (current-window) lem::*cursor-x* lem::*cursor-y*)
-        (charms/ll:curs-set 0)
+        (;;charms/ll:curs-set
+	 %lem-opengl::ncurses-curs-set
+	 0)
         (progn
-          (charms/ll:curs-set 1)
-          (charms/ll:wmove scrwin lem::*cursor-y* lem::*cursor-x*)))
+          (;;charms/ll:curs-set
+	   %lem-opengl::ncurses-curs-set
+	   1)
+          (;;charms/ll:wmove
+	   %lem-opengl::ncurses-wmove
+	   scrwin lem::*cursor-y* lem::*cursor-x*)))
     (charms/ll:wnoutrefresh scrwin)
     (charms/ll:doupdate)))
 

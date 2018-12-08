@@ -432,7 +432,9 @@
    x
    keypad-p ;;see https://linux.die.net/man/3/keypad
    clearok
-   attr-bits))
+   attr-bits
+   cursor-y
+   cursor-x))
 
 (defun ncurses-newwin (nlines ncols begin-y begin-x)
   (add-win (make-win :lines nlines
@@ -476,6 +478,21 @@
   (let ((old (win-attr-bits win)))
     (setf (win-attr-bits win)
 	  (logand (lognot attr) old))))
+
+;;(defun ncurses-wscrl (win n))
+;;https://linux.die.net/man/3/scrollok
+(defun ncurses-wmove (win y x)
+  (setf (win-cursor-x win) x
+	(win-cursor-y win) y))
+
+(defparameter *cursor-state* :normal)
+(defun ncurses-curs-set (value)
+  "The curs_set routine sets the cursor state is set to invisible, normal, or very visible for visibility equal to 0, 1, or 2 respectively. If the terminal supports the visibility requested, the previous cursor state is returned; otherwise, ERR is returned."
+  (setf *cursor-state*
+	(case value
+	  (0 :invisible)
+	  (1 :normal)
+	  (2 :very-visible))))
 
 
 #+nil
