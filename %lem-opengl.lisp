@@ -634,19 +634,40 @@
 (defun ncurses-waddch (win char)
   " The addch(), waddch(), mvaddch() and mvwaddch() routines put the character ch into the given window at its current window position, which is then advanced. They are analogous to putchar() in stdio(). If the advance is at the right margin, the cursor automatically wraps to the beginning of the next line. At the bottom of the current scrolling region, if scrollok() is enabled, the scrolling region is scrolled up one line.
 
-If ch is a tab, newline, or backspace, the cursor is moved appropriately within the window. Backspace moves the cursor one character left; at the left edge of a window it does nothing. Newline does a clrtoeol(), then moves the cursor to the window left margin on the next line, scrolling the window if on the last line). Tabs are considered to be at every eighth column. https://www.mkssoftware.com/docs/man3/curs_addch.3.asp"
+If ch is a tab, newline, or backspace, the cursor is moved appropriately within the window. Backspace moves the cursor one character left; at the left edge of a window it does nothing. Newline does a clrtoeol(), then moves the cursor to the window left margin on the next line, scrolling the window if on the last line). Tabs are considered to be at every eighth column. https://www.mkssoftware.com/docs/man3/curs_addch.3.asp If ch is any control character other than tab, newline, or backspace, it is drawn in ^X notation. Calling winch() after adding a control character does not return the character itself, but instead returns the ^-representation of the control character. (To emit control characters literally, use echochar().) "
   (let ((x (win-cursor-x win))
 	(y (win-cursor-y win)))
     (case char
-      (#\tab)
-      (#\newline)
+      (#\tab (setf (win-cursor-x win)
+		   (next-8 x)))
+      (#\newline (ncurses-clrtoeol)
+		 (let ((max-cursor-y (1- (win-lines win))))
+		   (if (= max-cursor-y y)
+		       (ncurses-wscrl win 1)
+		       (setf (win-cursor-y win)
+			     (max (+ 1 y)
+				  max-cursor-y)))))
       (#\backspace (setf (win-cursor-x win)
 			 (max 0 (- x 1)))))))
+
+(defun next-8 (n)
+  "this is for tabbing, see waddch. its every 8th column"
+  (* 8 (+ 1 (floor n 8))))
+
 (defun add-char (x y value &optional (win *win*))
   (setf (ref-grid x y (win-data win))
 	(make-glyph :value value
 		    :attributes (win-attr-bits win)))
   win)
+
+(defun char-dispatch (char)
+  ;;FIXME: not portable common lisp, requires ASCII
+  (if (standard-char-p char)
+      (values char nil)
+      (let ((value (char-code char)))
+	(if (> value 64)
+	    (values (code-char (logior 64 value)) t)
+	    (error "this is not a good ascii char: ~s" value)))))
 
 (defun fuzz (&optional (win *win*))
   (dotimes (x 100)

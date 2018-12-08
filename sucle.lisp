@@ -472,8 +472,9 @@
   (;;charms/ll:wmove
    %lem-opengl::ncurses-wmove
    (ncurses-view-scrwin view) y x)
-  ;;FIXME
-  (charms/ll:wclrtobot (ncurses-view-scrwin view)))
+  (;;charms/ll:wclrtobot
+   %lem-opengl::ncurses-wclrtobot
+   (ncurses-view-scrwin view)))
 
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   ;;FIXME
