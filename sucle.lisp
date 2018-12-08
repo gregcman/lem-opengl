@@ -272,7 +272,7 @@
                  (get-key code))))))))
 
 (defun input-loop (editor-thread)
-  (print 32434)
+  (print "lem gl")
   (funcall
    (application::just-main
     (lambda ()
@@ -280,12 +280,8 @@
 	(handler-case
 	    (block cya
 	      (loop
-		 (print 34234)
 		 (application:poll-app)
 		 (%lem-opengl::per-frame)
-		 (when (window:skey-j-p (window::keyval #\e))
-		   (application::quit))
-		 #+nil
 		 (handler-case
 		     (progn
 		       (unless (bt:thread-alive-p editor-thread) (return-from cya))

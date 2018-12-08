@@ -715,6 +715,7 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
   (* 8 (+ 1 (floor n 8))))
 
 (defun add-char (x y value &optional (win *win*))
+  (print (list x y))
   (setf (ref-grid x y (win-data win))
 	(make-glyph :value value
 		    :attributes (logior (win-attr-bits win)
