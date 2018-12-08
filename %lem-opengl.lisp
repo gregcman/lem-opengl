@@ -443,6 +443,13 @@
   (format stream "lines: ~a cols: ~a" (win-lines win) (win-cols win))
   (print-grid (win-data win) stream (win-cursor-x win) (win-cursor-y win)))
 
+(struct-to-clos:struct->class
+ (defstruct glyph
+   value
+   attributes))
+
+(defparameter *clear-glyph* (make-glyph :value #\Space))
+
 ;;window is an array of lines, for easy swapping and scrolling of lines. optimizations later
 (defun make-row (width)
   (make-array width :initial-element *clear-glyph*))
@@ -626,12 +633,6 @@
 (defun ncurses-wscrl (win n)
   (%ncurses-wscrl (win-data win) n))
 
-(struct-to-clos:struct->class
- (defstruct glyph
-   value
-   attributes))
-
-(defparameter *clear-glyph* (make-glyph :value #\Space))
 
 (defun ncurses-mvwaddstr (win y x string)
   (setf (win-cursor-x win) x
@@ -781,6 +782,10 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 				  ydest
 				  (glyph-value glyph);;;FIXME: use glyph
 				  ))))))))
+
+(defparameter *update-p* nil)
+(defun ncurses-doupdate ()
+  (setf *update-p* t)) ;;;when copied to opengl buffer, set again to nil
 
 
 #+nil

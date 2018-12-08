@@ -525,7 +525,8 @@
     (;;charms/ll:wnoutrefresh
      %lem-opengl::ncurses-wnoutrefresh
      scrwin)
-    (charms/ll:doupdate)))
+    (;;charms/ll:doupdate
+     %lem-opengl::ncurses-doupdate)))
 
 (defmethod lem-if:scroll ((implementation sucle) view n)
   (;;charms/ll:wscrl
