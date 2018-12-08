@@ -1,6 +1,7 @@
 (defsystem "lem-opengl"
   :depends-on ("cffi"
 	       ;;"cl-charms"
+	       "control"
                "trivial-clipboard"
                #+(or (and ccl unix) (and lispworks unix))"lem-setlocale"
 	       "%lem-opengl"

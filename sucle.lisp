@@ -238,6 +238,8 @@
                          (code-char code)))))))
          (key (char-to-key char)))
     key))
+
+
 #+nil
 (let ((resize-code (get-code "[resize]"))
       (abort-code (get-code "C-]"))
@@ -279,10 +281,21 @@
       (block out
 	(handler-case
 	    (block cya
+	      (text-sub::change-color-lookup 'lem-sucle::color-fun)
+	      (application::refresh '%lem-opengl::virtual-window)
+	      (application::getfnc '%lem-opengl::virtual-window)
 	      (loop
 		 (application:poll-app)
 		 (%lem-opengl::per-frame)
-		 ;#+nil
+					;#+nil
+		   
+		 (let ((array (window::control-state-jp-or-repeat window::*control-state*)))
+		   (declare (type window::mouse-keyboard-input-array array))
+		   (dotimes (code 128)
+		     (let ((true-p (= 1 (sbit array code))))
+		       (when true-p
+			 (multiple-value-bind (name type) (window::back-value code)
+			   (print (list name type)))))))
 		 (handler-case
 		     (progn
 		       (unless (bt:thread-alive-p editor-thread) (return-from cya))
@@ -544,3 +557,41 @@
   (trivial-clipboard:text text))
 
 (pushnew :lem-opengl *features*)
+
+(defun color-fun (color)
+    (labels ((bcolor (r g b)
+	       (values (/ (utility::floatify (- 255 r)) 255.0)
+		       (/ (utility::floatify (- 255 g)) 255.0)
+		       (/ (utility::floatify (- 255 b)) 255.0)))
+	     (c (r g b)
+	       (bcolor r g b))
+	     (c6 (x)
+	       (let ((b (mod x 6))
+		     (g (mod (floor x 6) 6))
+		     (r (mod (floor x 36) 6)))
+		 (bcolor (* 51 r)
+			 (* 51 g)
+			 (* 51 b))))
+	     (g (x)
+	       (c (* x 16) (* x 16) (* x 16))))
+      (case color
+	(0 (c 0 0 0))
+	(1 (c 205 0 0))
+	(2 (c 0 205 0))
+	(3 (c 205 205 0))
+	(4 (c 0 0 238))
+	(5 (c 205 0 205))
+	(6 (c 0 205 205))
+	(7 (c 229 229 229))
+	(8 (c 127 127 127))
+	(9 (c 255 0 0))
+	(10 (c 0 255 0))
+	(11 (c 255 255 0))
+	(12 (c 92 92 255))
+	(13 (c 255 0 255))
+	(14 (c 0 255 255))
+	(15 (c 255 255 255))
+	(t (let ((c (- color 16)))
+	     (if (< c 216)
+		 (c6 c)
+		 (g (- c 216))))))))

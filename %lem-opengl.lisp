@@ -39,6 +39,11 @@
    :height (floor (* *lines* *glyph-height*))
    :title ""))
 
+(deflazy virtual-window ((w application::w) (h application::h))
+  (setf *columns* (floor w *glyph-width*)
+	*lines* (floor h *glyph-height*))
+  (prepare-virtual-window))
+
 (defclass sprite ()
   ((bounding-box :accessor sprite.bounding-box
 		 :initform (make-instance 'rectangle
@@ -273,12 +278,11 @@
 			 bgcolor)))))
  ;;   #+nil
     (dotimes (i (length *virtual-window*))
-      (let ((str (aref *virtual-window* i)))
-	(draw-string 0
-		     (- *lines* i 1)
-		     str
-		     (bytecolor 3 3 3 3)
-		     (bytecolor 0 0 0 0))))
+      (let ((array (aref *virtual-window* i)))
+	(draw-glyphs-array
+	 0
+	 (- *lines* i 1)
+	 array)))
     
     (rebase -128.0 -128.0))
   (gl:point-size 1.0)
@@ -294,6 +298,27 @@
     (gl:enable :blend)
     (gl:blend-func :src-alpha :one-minus-src-alpha)
     (gl:call-list (glhelp::handle (getfnc 'text-sub::fullscreen-quad)))))
+
+(defun draw-glyphs-array (x y array)
+  (let ((len (length array)))
+    (dotimes (index len)
+      (let ((glyph (aref array index)))
+	(let ((pair (ncurses-color-pair (mod (glyph-attributes glyph) 256))))
+	  (color (byte/255 (char-code (glyph-value glyph)))
+		 (let ((fg (car pair)))
+		   (if (or (not pair)
+			   (= -1 fg))
+		       (bytecolor 0 0 0)
+		       (byte/255 fg)))
+		 (let ((bg (cdr pair)))
+		   (if (or (not pair)
+			   (= -1 bg))
+		       (bytecolor 3 3 3)
+		       (byte/255 bg))))
+	  (vertex (floatify x)
+		  (floatify y)
+		  0.0)			  
+	  (incf x))))))
 
 (defun plain-button (fun &optional
 			   (str (string (gensym "nameless-button-")))
@@ -410,8 +435,7 @@
   (setf (gethash pair-counter *pairs*)
 	(cons fg bg)))
 (defun ncurses-color-pair (pair-counter)
-  ;;(gethash pair-counter *pairs*) ;;FIXME :what?
-  pair-counter)
+  (gethash pair-counter *pairs*)) ;;fixme -> this is not how ncurses works.
 
 (defun ncurses-pair-content (pair-counter)
   (let ((pair (ncurses-color-pair pair-counter)))
@@ -458,7 +482,11 @@
    value
    attributes))
 
-(defparameter *clear-glyph* (make-glyph :value #\Space))
+(defun print-glyph (stream glyph)
+  (write-char (glyph-value glyph) stream))
+(set-pprint-dispatch 'glyph 'print-glyph)
+
+(defparameter *clear-glyph* (make-glyph :value #\Space :attributes 0))
 
 ;;window is an array of lines, for easy swapping and scrolling of lines. optimizations later
 (defun make-row (width)
@@ -759,15 +787,19 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      win))
   win)
 
-(defparameter *virtual-window-width* *columns*)
-(defparameter *virtual-window-height* *lines*)
-(defparameter *virtual-window*
-  (let ((array (make-array *virtual-window-height*)))
-    (dotimes (i (length array))
-      (setf (aref array i)
-	    (make-array *virtual-window-width*
-			:initial-element #\space :element-type 'character)))
-    array))
+(defparameter *virtual-window-width* nil)
+(defparameter *virtual-window-height* nil)
+(defparameter *virtual-window* nil)
+(defun prepare-virtual-window ()
+  (setf	*virtual-window-width* *columns*
+	*virtual-window-height* *lines*)
+  (setf *virtual-window*
+	(let ((array (make-array *virtual-window-height*)))
+	  (dotimes (i (length array))
+	    (setf (aref array i)
+		  (make-array *virtual-window-width*
+			      :initial-element *clear-glyph*)))
+	  array)))
 (defun set-virtual-window (x y value)
   (setf (aref (aref *virtual-window* y) x)
 	value))
@@ -790,7 +822,7 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 		       (> *virtual-window-height* ydest -1))
 	      (set-virtual-window xdest
 				  ydest
-				  (glyph-value glyph);;;FIXME: use glyph
+				  glyph
 				  ))))))))
 
 (defparameter *update-p* nil)
