@@ -379,7 +379,9 @@
   (setf (gethash pair-color *color-pair-table*)
 	(%lem-opengl::ncurses-color-pair *pair-counter*)
         ;;(charms/ll:color-pair *pair-counter*)
-	))
+	)
+  ;;FIXME:: return color-pair?
+  *pair-counter*)
 
 (defun get-color-pair (fg-color-name bg-color-name)
   (let* ((fg-color (if (null fg-color-name) -1 (get-color fg-color-name)))

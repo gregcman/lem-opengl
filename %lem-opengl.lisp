@@ -494,6 +494,9 @@
 	  (1 :normal)
 	  (2 :very-visible))))
 
+(defparameter A_BOLD #x00200000)
+(defparameter A_UNDERLINE #x00020000)
+
 
 #+nil
 (let ((program (getfnc 'flat-shader)))

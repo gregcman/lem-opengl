@@ -215,10 +215,12 @@
                                      (lem.term:get-color-pair foreground background))
                                  0
                                  (if (lem::attribute-bold-p attribute)
-                                     charms/ll:a_bold
+                                     ;;charms/ll:a_bold
+				     %lem-opengl::a_bold
                                      0)
                                  (if (lem::attribute-underline-p attribute)
-                                     charms/ll:a_underline
+                                     ;;charms/ll:a_underline
+				     %lem-opengl::a_underline
                                      0))))
               (setf (lem::attribute-%internal-value attribute) bits)
               bits)))))
