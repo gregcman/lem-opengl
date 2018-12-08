@@ -434,7 +434,44 @@
    clearok
    attr-bits
    cursor-y
-   cursor-x))
+   cursor-x
+   data))
+
+;;window is an array of lines, for easy swapping and scrolling of lines. optimizations later
+(defun make-grid (rows columns)
+  (let ((rows-array (make-array rows)))
+    (dotimes (i rows)
+      (setf (aref rows-array i)
+	    (make-array columns :initial-element nil)))
+    rows-array))
+
+(defun grid-rows (grid)
+  (length grid))
+(defun grid-columns (grid)
+  (length (aref grid 0)))
+(utility::etouq
+  (let ((place '(aref (aref grid y) x))
+	(args '(x y grid)))
+    `(progn
+       (defun ref-grid (,@args)
+	 ,place)
+       (defun (setf ref-grid) (new ,@args)
+	 (setf ,place new)
+	 new))))
+
+(defun transfer-data (grid-src grid-dest)
+  (let ((shared-rows
+	 (min (grid-rows grid-src)
+	      (grid-rows grid-dest)))
+	(shared-columns
+	 (min (grid-columns grid-src)
+	      (grid-columns grid-dest))))
+    (dotimes (row-index shared-rows)
+      ;;FIXME optimization? can cache the row. but its a fragile optimization
+      (dotimes (column-index shared-columns)
+	(setf (ref-grid column-index row-index grid-dest)
+	      (ref-grid column-index row-index grid-src)))))
+  grid-dest)
 
 (defun ncurses-newwin (nlines ncols begin-y begin-x)
   (add-win (make-win :lines nlines
@@ -465,7 +502,12 @@
 
 (defun ncurses-wresize (win height width)
   (setf (win-lines win) height
-	(win-cols win) width))
+	(win-cols win) width)
+  (let ((old-data (win-data win))
+	(new-grid (make-grid height width)))
+    (transfer-data old-data new-grid)
+    (setf (win-data win)
+	  new-grid)))
 
 (defparameter *mouse-enabled-p* nil)
 
