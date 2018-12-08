@@ -277,66 +277,65 @@
   ;; (print "lem gl")
   (setf %lem-opengl::*columns* 80
 	%lem-opengl::*lines* 25)
-  (funcall
-   (application::just-main
-    (lambda ()
-      (block out
-	(handler-case
-	    (block cya
-	      (text-sub::change-color-lookup
-	       ;;'text-sub::color-fun
-	       'lem-sucle::color-fun
-	       #+nil
-	       (lambda (n)
-		 (values-list
-		  (mapcar #'utility::floatify
-			  (aref lem.term::*colors* (- 255 n)))))
-	       )
-	      (application::refresh '%lem-opengl::virtual-window)
-	      (application::refresh '%lem-opengl::event-queue)	      
-	      (loop
-		 (application::getfnc '%lem-opengl::virtual-window)
-		 (application::getfnc '%lem-opengl::event-queue)
-		 (application:poll-app)
-		 (%lem-opengl::per-frame)
+  (application::main
+   (lambda ()
+     (block out
+       (handler-case
+	   (block cya
+	     (text-sub::change-color-lookup
+	      ;;'text-sub::color-fun
+	      'lem-sucle::color-fun
+	      #+nil
+	      (lambda (n)
+		(values-list
+		 (mapcar #'utility::floatify
+			 (aref lem.term::*colors* (- 255 n)))))
+	      )
+	     (application::refresh '%lem-opengl::virtual-window)
+	     (application::refresh '%lem-opengl::event-queue)	      
+	     (loop
+		(application::getfnc '%lem-opengl::virtual-window)
+		(application::getfnc '%lem-opengl::event-queue)
+		(application:poll-app)
+		(%lem-opengl::per-frame)
 					;#+nil
-		   
-		 (let ((array (window::control-state-jp-or-repeat window::*control-state*)))
-		   (declare (type window::mouse-keyboard-input-array array))
-		   (dotimes (code 128)
-		     (let ((true-p (= 1 (sbit array code))))
-		       (when true-p
-			 (multiple-value-bind (name type) (window::back-value code)
-			   (print (list name type)))))))
-		 (handler-case
-		     (progn
-		       (unless (bt:thread-alive-p editor-thread) (return-from cya))
-		       (block out
-			 (loop (multiple-value-bind (event exists)
-				   (lparallel.queue:try-pop-queue %lem-opengl::*queue*)
-				 (if exists
-				     (send-event event)
-				     (return-from out)))))
-		       (let ((event
-			      (cond ((window:skey-j-p (window::keyval #\e)) :abort))
-			       #+nil
-			       (get-event)))
+		
+		(let ((array (window::control-state-jp-or-repeat window::*control-state*)))
+		  (declare (type window::mouse-keyboard-input-array array))
+		  (dotimes (code 128)
+		    (let ((true-p (= 1 (sbit array code))))
+		      (when true-p
+			(multiple-value-bind (name type) (window::back-value code)
+			  (print (list name type)))))))
+		(handler-case
+		    (progn
+		      (unless (bt:thread-alive-p editor-thread) (return-from cya))
+		      (block out
+			(loop (multiple-value-bind (event exists)
+				  (lparallel.queue:try-pop-queue %lem-opengl::*queue*)
+				(if exists
+				    (send-event event)
+				    (return-from out)))))
+		      (let ((event
+			     (cond ((window:skey-j-p (window::keyval #\e)) :abort))
+			      #+nil
+			      (get-event)))
 			
-			 (if (eq event :abort)
-			     (send-abort-event editor-thread nil)
-			     ;;(send-event event)
-			     )))
-		   #+sbcl
-		   (sb-sys:interactive-interrupt (c)
-		     (declare (ignore c))
-		     (send-abort-event editor-thread t)))))
-	  (exit-editor (c) (return-from out c)))))
-    :width (floor (* %lem-opengl::*columns*
-		     %lem-opengl::*glyph-width*))
-    :height (floor (* %lem-opengl::*lines*
-		      %lem-opengl::*glyph-height*))
-    :title "lem is an editor for Common Lisp"
-    :resizable nil)))
+			(if (eq event :abort)
+			    (send-abort-event editor-thread nil)
+			    ;;(send-event event)
+			    )))
+		  #+sbcl
+		  (sb-sys:interactive-interrupt (c)
+		    (declare (ignore c))
+		    (send-abort-event editor-thread t)))))
+	 (exit-editor (c) (return-from out c)))))
+   :width (floor (* %lem-opengl::*columns*
+		    %lem-opengl::*glyph-width*))
+   :height (floor (* %lem-opengl::*lines*
+		     %lem-opengl::*glyph-height*))
+   :title "lem is an editor for Common Lisp"
+   :resizable nil))
 
 #+nil
 (defun input-loop (editor-thread)
