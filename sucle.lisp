@@ -273,10 +273,14 @@
                 (t
                  (get-key code))))))))
 
+(defparameter *ticks* 0)
+(defparameter *need-to-resize* nil)
 (defun input-loop (editor-thread)
   ;; (print "lem gl")
   (setf %lem-opengl::*columns* 80
 	%lem-opengl::*lines* 25)
+  (setf *ticks* 0)
+  (setf application::*main-subthread-p* nil)
   (application::main
    (lambda ()
      (block out
@@ -314,8 +318,14 @@
 			(loop (multiple-value-bind (event exists)
 				  (lparallel.queue:try-pop-queue %lem-opengl::*queue*)
 				(if exists
-				    (send-event event)
+				    (case event
+				      (:resize
+				       (setf *need-to-resize* t)))
 				    (return-from out)))))
+		      (when (and (zerop (mod *ticks* 32))
+				 *need-to-resize*)
+			(setf *need-to-resize* nil)
+			(send-event :resize))
 		      (let ((event
 			     (cond ((window:skey-j-p (window::keyval #\e)) :abort))
 			      #+nil
