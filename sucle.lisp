@@ -580,9 +580,9 @@
 
 (defun color-fun (color)
     (labels ((bcolor (r g b)
-	       (values (/ (utility::floatify r) 255.0)
-		       (/ (utility::floatify g) 255.0)
-		       (/ (utility::floatify b) 255.0)))
+	       (values (/ (utility::floatify (- 255 r)) 255.0)
+		       (/ (utility::floatify (- 255 g)) 255.0)
+		       (/ (utility::floatify (- 255 b)) 255.0)))
 	     (c (r g b)
 	       (bcolor r g b))
 	     (c6 (x)
