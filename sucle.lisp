@@ -522,6 +522,8 @@
    %lem-opengl::ncurses-wclrtobot
    (ncurses-view-scrwin view)))
 
+(defparameter *no* *standard-output*)
+
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   ;;FIXME
   (let ((attr (attribute-to-bits 'modeline)))
@@ -548,10 +550,16 @@
   (when (ncurses-view-modeline-scrwin view)
     (;;charms/ll:wnoutrefresh
      %lem-opengl::ncurses-wnoutrefresh
-     (ncurses-view-modeline-scrwin view)))
+     (ncurses-view-modeline-scrwin view))
+    (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
+    )
+  
   (;;charms/ll:wnoutrefresh
    %lem-opengl::ncurses-wnoutrefresh
-   (ncurses-view-scrwin view)))
+   (ncurses-view-scrwin view))
+
+  (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
+  )
 
 (defmethod lem-if:update-display ((implementation sucle))
   (let ((scrwin (ncurses-view-scrwin (window-view (current-window)))))

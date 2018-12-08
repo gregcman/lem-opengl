@@ -282,13 +282,15 @@
 			 string
 			 fgcolor
 			 bgcolor)))))
- ;;   #+nil
-    (dotimes (i (length *virtual-window*))
-      (let ((array (aref *virtual-window* i)))
-	(draw-glyphs-array
-	 0
-	 (- *lines* i 1)
-	 array)))
+    ;;   #+nil
+    (when *update-p*
+      (setf *update-p* nil)
+      (dotimes (i (length *virtual-window*))
+	(let ((array (aref *virtual-window* i)))
+	  (draw-glyphs-array
+	   0
+	   (- *lines* i 1)
+	   array))))
     
     (rebase -128.0 -128.0))
   (gl:point-size 1.0)
@@ -312,13 +314,17 @@
 	(let ((pair (ncurses-color-pair (mod (glyph-attributes glyph) 256))))
 	  (color (byte/255 (char-code (glyph-value glyph)))
 		 (let ((bg (cdr pair)))
-		   (if (or (not pair)
-			   (= -1 bg))
+		   (if (or
+			t
+			(not pair)
+			(= -1 bg))
 		       (byte/255 8)
 		       (byte/255 bg)))
 		 (let ((fg (car pair)))
-		   (if (or (not pair)
-			   (= -1 fg))
+		   (if (or
+			t
+			(not pair)
+			(= -1 fg))
 		       (bytecolor 3 3 3)
 		       (byte/255 fg))))
 	  (vertex (floatify x)
@@ -832,6 +838,21 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 (defparameter *update-p* nil)
 (defun ncurses-doupdate ()
   (setf *update-p* t)) ;;;when copied to opengl buffer, set again to nil
+
+(defun print-virtual-window (&optional (array *virtual-window*) (stream *standard-output*))
+  (let ((horizontal-bar (+ 2 (length (aref array 0)))))
+    (terpri stream)
+    (dotimes (i horizontal-bar) (write-char #\_ stream))
+    (dotimes (line (length array))
+      (terpri stream)
+      (write-char #\| stream)
+      (let ((line-array (aref array line)))
+	(dotimes (i (length line-array))
+	  (write-char (glyph-value (aref line-array i)) stream)))
+      (write-char #\| stream))
+    (terpri stream)
+    (dotimes (i horizontal-bar) (write-char #\_ stream))
+    (terpri stream)))
 
 
 #+nil
