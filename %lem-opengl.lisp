@@ -459,6 +459,20 @@
 	 (setf ,place new)
 	 new))))
 
+(defun print-grid (grid)
+  (dotimes (grid-row (grid-rows grid))
+    (print (aref grid grid-row)))
+  grid)
+
+(defun move-row (old-n new-n grid)
+  "move row old-n to new-n"
+  (cond ((> (grid-rows grid) new-n -1)
+	 (setf (aref grid new-n)
+	       (aref grid old-n))
+	 (setf (aref grid old-n) nil))
+	(t (error "moving to a row that does not exist")))
+  grid)
+
 (defun transfer-data (grid-src grid-dest)
   (let ((shared-rows
 	 (min (grid-rows grid-src)
@@ -539,6 +553,32 @@
 
 (defparameter A_BOLD #x00200000)
 (defparameter A_UNDERLINE #x00020000)
+
+(defun %ncurses-wscrl (grid n)
+  (let ((width (grid-columns grid)))
+    (cond ((plusp n)
+	   ;;scrolling up means lines get moved up,
+	   ;;which means start at top of screen to move, which is smallest.
+	   (loop :for i :from n :below (grid-rows grid)
+	      :do
+	      (move-row i
+			(- i n)
+			grid)))
+	  ((minusp n)
+	   ;;scrolling down means lines get moved down,
+	   ;;which means start at bottom of screen to move, which is largest.
+	   (let ((move-distance (- n)))
+	     (loop :for i :from (- (grid-rows grid) 1 move-distance) :downto 0
+		:do
+		(move-row i
+			  (+ i move-distance)
+			  grid))))
+	  ((zerop n) t))
+    ;;;;fill in those nil's. OR FIXME
+    (map-into grid (lambda (x) (or x (make-array width :initial-element nil))) grid))
+  grid)
+(defun ncurses-wscrl (win n)
+  (%ncurses-wscrl (win-data win) n))
 
 
 #+nil
