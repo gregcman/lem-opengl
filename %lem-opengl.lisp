@@ -314,12 +314,12 @@
 		 (let ((fg (car pair)))
 		   (if (or (not pair)
 			   (= -1 fg))
-		       (bytecolor 3 3 3)
+		       (bytecolor 0 0 0)
 		       (byte/255 fg)))
 		 (let ((bg (cdr pair)))
 		   (if (or (not pair)
 			   (= -1 bg))
-		       (bytecolor 0 0 0)
+		       (bytecolor 3 3 3)
 		       (byte/255 bg))))
 	  (vertex (floatify x)
 		  (floatify y)
@@ -758,10 +758,12 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
   (* 8 (+ 1 (floor n 8))))
 
 (defun add-char (x y value &optional (win *win*))
-  (setf (ref-grid x y (win-data win))
-	(make-glyph :value value
-		    :attributes (logior (win-attr-bits win)
-					*current-attributes*)))
+  (when (and (> (win-lines win) y -1)
+	     (> (win-cols win) x -1))
+    (setf (ref-grid x y (win-data win))
+	  (make-glyph :value value
+		      :attributes (logior (win-attr-bits win)
+					  *current-attributes*))))
   win)
 
 ;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
