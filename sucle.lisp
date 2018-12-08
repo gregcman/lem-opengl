@@ -506,8 +506,10 @@
     (charms/ll:doupdate)))
 
 (defmethod lem-if:scroll ((implementation sucle) view n)
-  ;;FIXME
-  (charms/ll:wscrl (ncurses-view-scrwin view) n))
+  (;;charms/ll:wscrl
+   %lem-opengl::ncurses-wscrl
+   (ncurses-view-scrwin view)
+   n))
 
 (defmethod lem-if:clipboard-paste ((implementation sucle))
   (trivial-clipboard:text))
