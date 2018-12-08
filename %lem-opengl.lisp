@@ -39,10 +39,16 @@
    :height (floor (* *lines* *glyph-height*))
    :title ""))
 
-(deflazy virtual-window ((w application::w) (h application::h))
+(defparameter *queue* nil)
+
+(deflazy event-queue ()
+  (setf *queue* (lparallel.queue:make-queue)))
+
+(deflazy virtual-window ((w application::w) (h application::h) event-queue)
+  (lparallel.queue:push-queue :resize event-queue)
   (setf *columns* (floor w *glyph-width*)
 	*lines* (floor h *glyph-height*))
-  (prepare-virtual-window))
+  (setf *virtual-window* (make-virtual-window)))
 
 (defclass sprite ()
   ((bounding-box :accessor sprite.bounding-box
@@ -308,12 +314,12 @@
 		 (let ((fg (car pair)))
 		   (if (or (not pair)
 			   (= -1 fg))
-		       (bytecolor 0 0 0)
+		       (bytecolor 3 3 3)
 		       (byte/255 fg)))
 		 (let ((bg (cdr pair)))
 		   (if (or (not pair)
 			   (= -1 bg))
-		       (bytecolor 3 3 3)
+		       (bytecolor 0 0 0)
 		       (byte/255 bg))))
 	  (vertex (floatify x)
 		  (floatify y)
@@ -787,19 +793,15 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      win))
   win)
 
-(defparameter *virtual-window-width* nil)
-(defparameter *virtual-window-height* nil)
-(defparameter *virtual-window* nil)
-(defun prepare-virtual-window ()
-  (setf	*virtual-window-width* *columns*
-	*virtual-window-height* *lines*)
-  (setf *virtual-window*
-	(let ((array (make-array *virtual-window-height*)))
-	  (dotimes (i (length array))
-	    (setf (aref array i)
-		  (make-array *virtual-window-width*
-			      :initial-element *clear-glyph*)))
-	  array)))
+
+(defun make-virtual-window ()
+  (let ((array (make-array *lines*)))
+    (dotimes (i (length array))
+      (setf (aref array i)
+	    (make-array *columns*
+			:initial-element *clear-glyph*)))
+    array))
+(defparameter *virtual-window* (make-virtual-window))
 (defun set-virtual-window (x y value)
   (setf (aref (aref *virtual-window* y) x)
 	value))
@@ -818,8 +820,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	(let ((glyph (ref-grid x y grid)))
 	  (let ((xdest (+ xwin x))
 		(ydest (+ ywin y)))
-	    (when (and (> *virtual-window-width* xdest -1)
-		       (> *virtual-window-height* ydest -1))
+	    (when (and (> *columns* xdest -1)
+		       (> *lines* ydest -1))
 	      (set-virtual-window xdest
 				  ydest
 				  glyph

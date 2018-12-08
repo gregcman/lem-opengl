@@ -274,17 +274,29 @@
                  (get-key code))))))))
 
 (defun input-loop (editor-thread)
- ;; (print "lem gl")
+  ;; (print "lem gl")
+  (setf %lem-opengl::*columns* 80
+	%lem-opengl::*lines* 25)
   (funcall
    (application::just-main
     (lambda ()
       (block out
 	(handler-case
 	    (block cya
-	      (text-sub::change-color-lookup 'lem-sucle::color-fun)
+	      (text-sub::change-color-lookup
+	       ;;'text-sub::color-fun
+	       'lem-sucle::color-fun
+	       #+nil
+	       (lambda (n)
+		 (values-list
+		  (mapcar #'utility::floatify
+			  (aref lem.term::*colors* (- 255 n)))))
+	       )
 	      (application::refresh '%lem-opengl::virtual-window)
-	      (application::getfnc '%lem-opengl::virtual-window)
+	      (application::refresh '%lem-opengl::event-queue)	      
 	      (loop
+		 (application::getfnc '%lem-opengl::virtual-window)
+		 (application::getfnc '%lem-opengl::event-queue)
 		 (application:poll-app)
 		 (%lem-opengl::per-frame)
 					;#+nil
@@ -299,10 +311,17 @@
 		 (handler-case
 		     (progn
 		       (unless (bt:thread-alive-p editor-thread) (return-from cya))
+		       (block out
+			 (loop (multiple-value-bind (event exists)
+				   (lparallel.queue:try-pop-queue %lem-opengl::*queue*)
+				 (if exists
+				     (send-event event)
+				     (return-from out)))))
 		       (let ((event
 			      (cond ((window:skey-j-p (window::keyval #\e)) :abort))
 			       #+nil
 			       (get-event)))
+			
 			 (if (eq event :abort)
 			     (send-abort-event editor-thread nil)
 			     ;;(send-event event)
@@ -316,7 +335,8 @@
 		     %lem-opengl::*glyph-width*))
     :height (floor (* %lem-opengl::*lines*
 		      %lem-opengl::*glyph-height*))
-    :title "")))
+    :title "lem is an editor for Common Lisp"
+    :resizable nil)))
 
 #+nil
 (defun input-loop (editor-thread)
@@ -560,9 +580,9 @@
 
 (defun color-fun (color)
     (labels ((bcolor (r g b)
-	       (values (/ (utility::floatify (- 255 r)) 255.0)
-		       (/ (utility::floatify (- 255 g)) 255.0)
-		       (/ (utility::floatify (- 255 b)) 255.0)))
+	       (values (/ (utility::floatify r) 255.0)
+		       (/ (utility::floatify g) 255.0)
+		       (/ (utility::floatify b) 255.0)))
 	     (c (r g b)
 	       (bcolor r g b))
 	     (c6 (x)
