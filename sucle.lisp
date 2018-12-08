@@ -282,7 +282,7 @@
 	      (loop
 		 (application:poll-app)
 		 (%lem-opengl::per-frame)
-		 #+nil
+		 ;#+nil
 		 (handler-case
 		     (progn
 		       (unless (bt:thread-alive-p editor-thread) (return-from cya))
@@ -299,8 +299,10 @@
 		     (declare (ignore c))
 		     (send-abort-event editor-thread t)))))
 	  (exit-editor (c) (return-from out c)))))
-    :width (floor (* 80 %lem-opengl::*glyph-width*))
-    :height (floor (* 25 %lem-opengl::*glyph-height*))
+    :width (floor (* %lem-opengl::*columns*
+		     %lem-opengl::*glyph-width*))
+    :height (floor (* %lem-opengl::*lines*
+		      %lem-opengl::*glyph-height*))
     :title "")))
 
 #+nil

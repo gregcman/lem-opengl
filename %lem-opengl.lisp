@@ -248,7 +248,7 @@
     (gl:disable :depth-test)
 
     ;;"sprites"
-;    #+nil
+    #+nil
     (do-sprite-chain (sprite t) ()
       (with-slots (position string)
 	  sprite
@@ -271,14 +271,14 @@
 			 string
 			 fgcolor
 			 bgcolor)))))
-    #+nil
+ ;;   #+nil
     (dotimes (i (length *virtual-window*))
       (let ((str (aref *virtual-window* i)))
-	(draw-string (/ 0 *glyph-width*)
-		     (/ i *glyph-height*)
+	(draw-string 0
+		     (- *lines* i 1)
 		     str
-		     (bytecolor 0 0 0 0)
-		     (bytecolor 3 3 3 3))))
+		     (bytecolor 3 3 3 3)
+		     (bytecolor 0 0 0 0))))
     
     (rebase -128.0 -128.0))
   (gl:point-size 1.0)
@@ -759,8 +759,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      win))
   win)
 
-(defparameter *virtual-window-width* 80)
-(defparameter *virtual-window-height* 25)
+(defparameter *virtual-window-width* *columns*)
+(defparameter *virtual-window-height* *lines*)
 (defparameter *virtual-window*
   (let ((array (make-array *virtual-window-height*)))
     (dotimes (i (length array))
