@@ -270,6 +270,13 @@
 			 string
 			 fgcolor
 			 bgcolor)))))
+    (dotimes (i (length *virtual-window*))
+      (let ((str (aref *virtual-window* i)))
+	(draw-string (/ 0 *glyph-width*)
+		     (/ i *glyph-height*)
+		     str
+		     (bytecolor 0 0 0 0)
+		     (bytecolor 3 3 3 3))))
     
     (rebase -128.0 -128.0))
   (gl:point-size 1.0)
@@ -529,7 +536,7 @@
 		       :cursor-y 0
 		       :data (make-grid nlines ncols)
 		       :attr-bits 0)))
-    (add-win win)
+  ;;  (add-win win)
     (setf *win* win)
     win))
 
