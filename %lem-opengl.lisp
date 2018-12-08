@@ -466,14 +466,24 @@
 	 (setf ,place new)
 	 new))))
 
-(defun print-grid (grid &optional (stream *standard-output*))
+(defun print-grid (grid &optional (stream *standard-output*) (cursor-x 0) (cursor-y 0))
   (dotimes (grid-row (grid-rows grid))
-    (print (map 'string (lambda (x)
-			  (typecase x
-			    (glyph (glyph-value x))
-			    (t #\space)))
-		(aref grid grid-row))
-	   stream))
+    (terpri stream)
+    (write-char #\| stream)
+    (let ((row-data (aref grid grid-row)))	
+      (dotimes (grid-column (grid-columns grid)) ;;FIXME dereferencing redundancy
+	(let ((cursor-here-p (and (= grid-column cursor-x)
+				  (= grid-row cursor-y)))
+	      (x (aref row-data grid-column)))
+	  (when cursor-here-p (write-char #\[ stream))
+	  (write-char 
+	   (typecase x
+	     (glyph (glyph-value x))
+	     (t #\space))
+	   stream)
+	  (when cursor-here-p (write-char #\] stream)))))
+    (write-char #\| stream))
+  (terpri stream)
   grid)
 
 (defun move-row (old-n new-n grid)
