@@ -762,6 +762,11 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	value))
 
 (defun ncurses-wnoutrefresh (&optional (win *win*))
+  ;;;FIXME:: follow https://linux.die.net/man/3/wnoutrefresh with "touching"
+  ;;;different lines
+  (when (win-clearok win)
+    ;;FIXME -> clearok? what to do? check this: https://linux.die.net/man/3/clearok
+    (setf (win-clearok win) nil))
   (let ((grid (win-data win))
 	(xwin (win-x win))
 	(ywin (win-y win)))
