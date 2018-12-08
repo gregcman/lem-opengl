@@ -497,10 +497,16 @@
     (;;charms/ll:attroff
      %lem-opengl::ncurses-attron
      attr)
-    (charms/ll:wnoutrefresh charms/ll:*stdscr*))
+    (;;charms/ll:wnoutrefresh
+     %lem-opengl::ncurses-wnoutrefresh
+     charms/ll:*stdscr*))
   (when (ncurses-view-modeline-scrwin view)
-    (charms/ll:wnoutrefresh (ncurses-view-modeline-scrwin view)))
-  (charms/ll:wnoutrefresh (ncurses-view-scrwin view)))
+    (;;charms/ll:wnoutrefresh
+     %lem-opengl::ncurses-wnoutrefresh
+     (ncurses-view-modeline-scrwin view)))
+  (;;charms/ll:wnoutrefresh
+   %lem-opengl::ncurses-wnoutrefresh
+   (ncurses-view-scrwin view)))
 
 (defmethod lem-if:update-display ((implementation sucle))
   (let ((scrwin (ncurses-view-scrwin (window-view (current-window)))))
@@ -516,7 +522,9 @@
 	   %lem-opengl::ncurses-wmove
 	   scrwin lem::*cursor-y* lem::*cursor-x*)))
     ;;FIXME
-    (charms/ll:wnoutrefresh scrwin)
+    (;;charms/ll:wnoutrefresh
+     %lem-opengl::ncurses-wnoutrefresh
+     scrwin)
     (charms/ll:doupdate)))
 
 (defmethod lem-if:scroll ((implementation sucle) view n)

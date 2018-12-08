@@ -748,6 +748,35 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      win))
   win)
 
+(defparameter *virtual-window-width* 80)
+(defparameter *virtual-window-height* 25)
+(defparameter *virtual-window*
+  (let ((array (make-array *virtual-window-height*)))
+    (dotimes (i (length array))
+      (setf (aref array i)
+	    (make-array *virtual-window-width*
+			:initial-element #\space :element-type 'character)))
+    array))
+(defun set-virtual-window (x y value)
+  (setf (aref (aref *virtual-window* y) x)
+	value))
+
+(defun ncurses-wnoutrefresh (&optional (win *win*))
+  (let ((grid (win-data win))
+	(xwin (win-x win))
+	(ywin (win-y win)))
+    (dotimes (y (win-lines win))
+      (dotimes (x (win-cols win))
+	(let ((glyph (ref-grid x y grid)))
+	  (let ((xdest (+ xwin x))
+		(ydest (+ ywin y)))
+	    (when (and (> *virtual-window-width* xdest -1)
+		       (> *virtual-window-height* ydest -1))
+	      (set-virtual-window xdest
+				  ydest
+				  (glyph-value glyph);;;FIXME: use glyph
+				  ))))))))
+
 
 #+nil
 (let ((program (getfnc 'flat-shader)))
