@@ -432,6 +432,7 @@
    x
    keypad-p ;;see https://linux.die.net/man/3/keypad
    clearok
+   scrollok
    attr-bits
    cursor-y
    cursor-x
@@ -631,24 +632,57 @@
        (loop :for z :from 0 :below (win-cols win)
 	  :do (add-char z i #\Space win))))
   win)
+
+(defun max-cursor-y (&optional (win *win*))
+  "the greatest value a cursor's y pos can be"
+  (1- (win-lines win)))
+(defun max-cursor-x (&optional (win *win*))
+  "the greatest value a cursor's x pos can be"
+  (1- (win-cols win)))
+
 (defun ncurses-waddch (win char)
   " The addch(), waddch(), mvaddch() and mvwaddch() routines put the character ch into the given window at its current window position, which is then advanced. They are analogous to putchar() in stdio(). If the advance is at the right margin, the cursor automatically wraps to the beginning of the next line. At the bottom of the current scrolling region, if scrollok() is enabled, the scrolling region is scrolled up one line.
 
 If ch is a tab, newline, or backspace, the cursor is moved appropriately within the window. Backspace moves the cursor one character left; at the left edge of a window it does nothing. Newline does a clrtoeol(), then moves the cursor to the window left margin on the next line, scrolling the window if on the last line). Tabs are considered to be at every eighth column. https://www.mkssoftware.com/docs/man3/curs_addch.3.asp If ch is any control character other than tab, newline, or backspace, it is drawn in ^X notation. Calling winch() after adding a control character does not return the character itself, but instead returns the ^-representation of the control character. (To emit control characters literally, use echochar().) "
   (let ((x (win-cursor-x win))
 	(y (win-cursor-y win)))
-    (case char
-      (#\tab (setf (win-cursor-x win)
-		   (next-8 x)))
-      (#\newline (ncurses-clrtoeol)
-		 (let ((max-cursor-y (1- (win-lines win))))
-		   (if (= max-cursor-y y)
-		       (ncurses-wscrl win 1)
-		       (setf (win-cursor-y win)
-			     (max (+ 1 y)
-				  max-cursor-y)))))
-      (#\backspace (setf (win-cursor-x win)
-			 (max 0 (- x 1)))))))
+    (flet ((advance ()	     
+	     (if (= (max-cursor-x win) x)
+		 (if (= (max-cursor-y win) y)
+		     (cond ((win-scrollok win) ;;scroll the window and reset to x pos
+			    (ncurses-wscrl win 1)
+			    (setf (win-cursor-x win) 0))
+			   (t (progn ;;do nothing
+				)))
+		     ;;reset x and go to next line, theres space
+		     (setf (win-cursor-x win) 0
+			   (win-cursor-y win) (+ 1 y)))
+		 ;;its not at the end of line, no one cares
+		 (setf (win-cursor-x win) (+ 1 x)))))
+      (cond 
+	((char= char #\tab)
+	 (setf (win-cursor-x win)
+	       (next-8 x)))
+	((char= char #\newline)
+	 (ncurses-clrtoeol)
+	 (let ((max-cursor-y (max-cursor-y win)))
+	   (if (= max-cursor-y y)
+	       (ncurses-wscrl win 1)
+	       (setf (win-cursor-y win)
+		     (min (+ 1 y)
+			  max-cursor-y))))
+	 (setf (win-cursor-x win) 0))
+	((char= char #\backspace)
+	 (setf (win-cursor-x win)
+	       (max 0 (- x 1))))
+	((char-control char)
+	 (add-char x y #\^ win)
+	 (advance)
+	 (ncurses-waddch win (char-control-printable char)))
+	((standard-char-p char)
+	 (add-char x y char win)
+	 (advance))
+	(t (error "what char? ~s" (char-code char)))))))
 
 (defun next-8 (n)
   "this is for tabbing, see waddch. its every 8th column"
@@ -660,14 +694,16 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 		    :attributes (win-attr-bits win)))
   win)
 
-(defun char-dispatch (char)
+(defun char-control (char)
   ;;FIXME: not portable common lisp, requires ASCII
-  (if (standard-char-p char)
-      (values char nil)
-      (let ((value (char-code char)))
-	(if (> value 64)
-	    (values (code-char (logior 64 value)) t)
-	    (error "this is not a good ascii char: ~s" value)))))
+  (let ((value (char-code char)))
+	(if (> 64 value)
+	    t
+	    nil)))
+
+(defun char-control-printable (char)
+  ;;FIXME: not portable common lisp, requires ASCII
+  (code-char (logior 64 (char-code char))))
 
 (defun fuzz (&optional (win *win*))
   (dotimes (x 100)
