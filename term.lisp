@@ -385,6 +385,7 @@
 #+nil
 "After it has been initialized, COLOR_PAIR(n), a macro defined in <curses.h>, can be used as a new video attribute. "
 ;;;https://linux.die.net/man/3/color_pair
+(defparameter *color-pairs* 256) ;;;FIXME::wtf does this mean? I added this and am guessing.
 
 (defun get-color-pair (fg-color-name bg-color-name)
   (let* ((fg-color (if (null fg-color-name) -1 (get-color fg-color-name)))

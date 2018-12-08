@@ -224,7 +224,7 @@
                                      0))))
               (setf (lem::attribute-%internal-value attribute) bits)
               bits)))))
-
+#+nil
 (defun get-key (code)
   (let* ((char (let ((nbytes (utf8-bytes code)))
                  (if (= nbytes 1)
@@ -238,7 +238,7 @@
                          (code-char code)))))))
          (key (char-to-key char)))
     key))
-
+#+nil
 (let ((resize-code (get-code "[resize]"))
       (abort-code (get-code "C-]"))
       (escape-code (get-code "escape")))
