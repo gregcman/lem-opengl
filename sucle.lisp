@@ -499,7 +499,8 @@
      attr)
     (;;charms/ll:wnoutrefresh
      %lem-opengl::ncurses-wnoutrefresh
-     charms/ll:*stdscr*))
+     ;;charms/ll:*stdscr*
+     %lem-opengl::*std-scr*))
   (when (ncurses-view-modeline-scrwin view)
     (;;charms/ll:wnoutrefresh
      %lem-opengl::ncurses-wnoutrefresh
