@@ -464,8 +464,9 @@
   (;;charms/ll:wmove
    %lem-opengl::ncurses-wmove
    (ncurses-view-scrwin view) y x)
-  ;;FIXME
-  (charms/ll:wclrtoeol (ncurses-view-scrwin view)))
+  (;;charms/ll:wclrtoeol
+   %lem-opengl::ncurses-wclrtoeol
+   (ncurses-view-scrwin view)))
 
 (defmethod lem-if:clear-eob ((implementation sucle) view x y)
   (;;charms/ll:wmove

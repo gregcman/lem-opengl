@@ -539,10 +539,17 @@
   #+win32(charms/ll:use-default-colors)
   (init-colors charms/ll:*colors*)
   (set-default-color nil nil)
+  "Normally, the tty driver buffers typed characters until a newline or carriage return is typed. The cbreak routine disables line buffering and erase/kill character-processing (interrupt and flow control characters are unaffected), making characters typed by the user immediately available to the program. The nocbreak routine returns the terminal to normal (cooked) mode.
+
+Initially the terminal may or may not be in cbreak mode, as the mode is inherited; therefore, a program should call cbreak or nocbreak explicitly. Most interactive programs using curses set the cbreak mode. Note that cbreak overrides raw. [See curs_getch(3X) for a discussion of how these routines interact with echo and noecho.]
+
+The echo and noecho routines control whether characters typed by the user are echoed by getch as they are typed. Echoing by the tty driver is always disabled, but initially getch is in echo mode, so characters typed are echoed. Authors of most interactive programs prefer to do their own echoing in a controlled area of the screen, or not to echo at all, so they disable echoing by calling noecho. [See curs_getch(3X) for a discussion of how these routines interact with cbreak and nocbreak.] https://linux.die.net/man/3/raw"
   (charms/ll:noecho)
   (charms/ll:cbreak)
   (charms/ll:raw)
+  "The raw and noraw routines place the terminal into or out of raw mode. Raw mode is similar to cbreak mode, in that characters typed are immediately passed through to the user program. The differences are that in raw mode, the interrupt, quit, suspend, and flow control characters are all passed through uninterpreted, instead of generating a signal. The behavior of the BREAK key depends on other bits in the tty driver that are not set by curses. https://linux.die.net/man/3/raw"
   (charms/ll:nonl)
+  "The nl and nonl routines control whether the underlying display device translates the return key into newline on input, and whether it translates newline into return and line-feed on output (in either case, the call addch('\n') does the equivalent of return and line feed on the virtual screen). Initially, these translations do occur. If you disable them using nonl, curses will be able to make better use of the line-feed capability, resulting in faster cursor motion. Also, curses will then be able to detect the return key. https://linux.die.net/man/3/clearok"
   (charms/ll:refresh)
   (charms/ll:keypad charms/ll:*stdscr* 1)
   (setf charms/ll::*escdelay* 0)

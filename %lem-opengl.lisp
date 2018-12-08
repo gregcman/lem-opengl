@@ -440,7 +440,7 @@
 (set-pprint-dispatch 'win 'print-win)
 (defun print-win (stream win)
   (format stream "lines: ~a cols: ~a" (win-lines win) (win-cols win))
-  (print-grid (win-data win) stream))
+  (print-grid (win-data win) stream (win-cursor-x win) (win-cursor-y win)))
 
 ;;window is an array of lines, for easy swapping and scrolling of lines. optimizations later
 (defun make-row (width)
@@ -509,6 +509,8 @@
 	      (ref-grid column-index row-index grid-src)))))
   grid-dest)
 
+(defparameter *win* nil)
+
 (defun ncurses-newwin (nlines ncols begin-y begin-x)
   (let ((win (make-win :lines nlines
 		       :cols ncols
@@ -516,6 +518,7 @@
 		       :x begin-x
 		       :data (make-grid nlines ncols))))
     (add-win win)
+    (setf *win* win)
     win))
 
 (defun ncurses-keypad (win value)
@@ -610,6 +613,48 @@
    attributes))
 
 (defparameter *clear-glyph* (make-glyph :value #\Space))
+
+(defun ncurses-mvwaddstr (win y x string))
+(defun ncurses-wclrtoeol (&optional (win *win*))
+  "The clrtoeol() and wclrtoeol() routines erase the current line to the right of the cursor, inclusive, to the end of the current line. https://www.mkssoftware.com/docs/man3/curs_clear.3.asp"
+  (let ((x (win-cursor-x win))
+	(y (win-cursor-y win)))
+    (loop :for i :from x :below (win-cols win)
+       :do (add-char i y #\Space win)))
+  win)
+(defun ncurses-wclrtobot (&optional (win *win*))
+  "The clrtobot() and wclrtobot() routines erase from the cursor to the end of screen. That is, they erase all lines below the cursor in the window. Also, the current line to the right of the cursor, inclusive, is erased. https://www.mkssoftware.com/docs/man3/curs_clear.3.asp"
+  (ncurses-wclrtoeol win)
+  (let ((y (win-cursor-y win)))
+    (loop :for i :from (+ y 1) :below (win-lines win)
+       :do
+       (loop :for z :from 0 :below (win-cols win)
+	  :do (add-char z i #\Space win))))
+  win)
+(defun ncurses-waddch (win char)
+  " The addch(), waddch(), mvaddch() and mvwaddch() routines put the character ch into the given window at its current window position, which is then advanced. They are analogous to putchar() in stdio(). If the advance is at the right margin, the cursor automatically wraps to the beginning of the next line. At the bottom of the current scrolling region, if scrollok() is enabled, the scrolling region is scrolled up one line.
+
+If ch is a tab, newline, or backspace, the cursor is moved appropriately within the window. Backspace moves the cursor one character left; at the left edge of a window it does nothing. Newline does a clrtoeol(), then moves the cursor to the window left margin on the next line, scrolling the window if on the last line). Tabs are considered to be at every eighth column. https://www.mkssoftware.com/docs/man3/curs_addch.3.asp"
+  (let ((x (win-cursor-x win))
+	(y (win-cursor-y win)))
+    (case char
+      (#\tab)
+      (#\newline)
+      (#\backspace (setf (win-cursor-x win)
+			 (max 0 (- x 1)))))))
+(defun add-char (x y value &optional (win *win*))
+  (setf (ref-grid x y (win-data win))
+	(make-glyph :value value
+		    :attributes (win-attr-bits win)))
+  win)
+
+(defun fuzz (&optional (win *win*))
+  (dotimes (x 100)
+    (add-char (random (win-cols win))
+	      (random (win-lines win))
+	      #\a
+	      win))
+  win)
 
 
 #+nil
