@@ -438,16 +438,18 @@
    data))
 
 (set-pprint-dispatch 'win 'print-win)
-(defun print-win (win &optional (stream *standard-output*))
+(defun print-win (stream win)
   (format stream "lines: ~a cols: ~a" (win-lines win) (win-cols win))
   (print-grid (win-data win) stream))
 
 ;;window is an array of lines, for easy swapping and scrolling of lines. optimizations later
+(defun make-row (width)
+  (make-array width :initial-element *clear-glyph*))
 (defun make-grid (rows columns)
   (let ((rows-array (make-array rows)))
     (dotimes (i rows)
       (setf (aref rows-array i)
-	    (make-array columns :initial-element nil)))
+	    (make-row columns)))
     rows-array))
 
 (defun grid-rows (grid)
@@ -466,7 +468,12 @@
 
 (defun print-grid (grid &optional (stream *standard-output*))
   (dotimes (grid-row (grid-rows grid))
-    (print (aref grid grid-row) stream))
+    (print (map 'string (lambda (x)
+			  (typecase x
+			    (glyph (glyph-value x))
+			    (t #\space)))
+		(aref grid grid-row))
+	   stream))
   grid)
 
 (defun move-row (old-n new-n grid)
@@ -494,10 +501,10 @@
 
 (defun ncurses-newwin (nlines ncols begin-y begin-x)
   (let ((win (make-win :lines nlines
-		     :cols ncols
-		     :y begin-y
-		     :x begin-x
-		     :data (make-grid nlines ncols))))
+		       :cols ncols
+		       :y begin-y
+		       :x begin-x
+		       :data (make-grid nlines ncols))))
     (add-win win)
     win))
 
@@ -582,7 +589,7 @@
 			  grid))))
 	  ((zerop n) t))
     ;;;;fill in those nil's. OR FIXME
-    (map-into grid (lambda (x) (or x (make-array width :initial-element nil))) grid))
+    (map-into grid (lambda (x) (or x (make-row width))) grid))
   grid)
 (defun ncurses-wscrl (win n)
   (%ncurses-wscrl (win-data win) n))
@@ -591,6 +598,8 @@
  (defstruct glyph
    value
    attributes))
+
+(defparameter *clear-glyph* (make-glyph :value #\Space))
 
 
 #+nil
