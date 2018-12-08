@@ -288,12 +288,12 @@
 	   (block cya
 	     (text-sub::change-color-lookup
 	      ;;'text-sub::color-fun
-	      'lem-sucle::color-fun
-	      #+nil
+	      ;;'lem-sucle::color-fun
+	      ;;#+nil
 	      (lambda (n)
 		(values-list
 		 (mapcar #'utility::floatify
-			 (aref lem.term::*colors* (- 255 n)))))
+			 (nbutlast (aref lem.term::*colors* n)))))
 	      )
 	     (application::refresh '%lem-opengl::virtual-window)
 	     (application::refresh '%lem-opengl::event-queue)	      
@@ -522,7 +522,7 @@
    %lem-opengl::ncurses-wclrtobot
    (ncurses-view-scrwin view)))
 
-(defparameter *no* *standard-output*)
+;;(defparameter *no* *standard-output*)
 
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   ;;FIXME
@@ -551,14 +551,14 @@
     (;;charms/ll:wnoutrefresh
      %lem-opengl::ncurses-wnoutrefresh
      (ncurses-view-modeline-scrwin view))
-    (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
+ ;;   (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
     )
   
   (;;charms/ll:wnoutrefresh
    %lem-opengl::ncurses-wnoutrefresh
    (ncurses-view-scrwin view))
 
-  (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
+;;  (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
   )
 
 (defmethod lem-if:update-display ((implementation sucle))
@@ -597,9 +597,9 @@
 
 (defun color-fun (color)
     (labels ((bcolor (r g b)
-	       (values (/ (utility::floatify (- 255 r)) 255.0)
-		       (/ (utility::floatify (- 255 g)) 255.0)
-		       (/ (utility::floatify (- 255 b)) 255.0)))
+	       (values (/ (utility::floatify r) 255.0)
+		       (/ (utility::floatify g) 255.0)
+		       (/ (utility::floatify b) 255.0)))
 	     (c (r g b)
 	       (bcolor r g b))
 	     (c6 (x)

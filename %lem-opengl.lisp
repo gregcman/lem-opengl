@@ -44,7 +44,7 @@
 (deflazy event-queue ()
   (setf *queue* (lparallel.queue:make-queue)))
 
-(deflazy virtual-window ((w application::w) (h application::h) event-queue)
+(deflazy virtual-window ((w application::w) (h application::h) (event-queue event-queue))
   (lparallel.queue:push-queue :resize event-queue)
   (setf *columns* (floor w *glyph-width*)
 	*lines* (floor h *glyph-height*))
@@ -313,20 +313,18 @@
       (let ((glyph (aref array index)))
 	(let ((pair (ncurses-color-pair (mod (glyph-attributes glyph) 256))))
 	  (color (byte/255 (char-code (glyph-value glyph)))
-		 (let ((bg (cdr pair)))
-		   (if (or
-			t
-			(not pair)
-			(= -1 bg))
-		       (byte/255 8)
-		       (byte/255 bg)))
 		 (let ((fg (car pair)))
 		   (if (or
-			t
 			(not pair)
 			(= -1 fg))
 		       (bytecolor 3 3 3)
-		       (byte/255 fg))))
+		       (byte/255 fg)))
+		 (let ((bg (cdr pair)))
+		   (if (or
+			(not pair)
+			(= -1 bg))
+		       (byte/255 8)
+		       (byte/255 bg))))
 	  (vertex (floatify x)
 		  (floatify y)
 		  0.0)			  
@@ -612,7 +610,7 @@
 
 ;;;FIXME add default window for ncurses like stdscr
 
-(defun ncurses-mvwin (win x y)
+(defun ncurses-mvwin (win y x)
   "Calling mvwin moves the window so that the upper left-hand corner is at position (x, y). If the move would cause the window to be off the screen, it is an error and the window is not moved. Moving subwindows is allowed, but should be avoided."
   ;;;FIXME: detect off screen 
   (setf (win-x win) x

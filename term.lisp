@@ -508,7 +508,7 @@
   ;;(charms/ll:start-color)
   ;; enable default color code (-1)
   #+win32(charms/ll:use-default-colors)
-  (init-colors 16 ;256
+  (init-colors 256
 	       )
   ;;;FIXME: find out what all these options do
   ;;(set-default-color nil nil)
