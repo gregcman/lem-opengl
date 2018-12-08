@@ -248,7 +248,7 @@
     (gl:disable :depth-test)
 
     ;;"sprites"
-    #+nil
+;    #+nil
     (do-sprite-chain (sprite t) ()
       (with-slots (position string)
 	  sprite
@@ -271,6 +271,7 @@
 			 string
 			 fgcolor
 			 bgcolor)))))
+    #+nil
     (dotimes (i (length *virtual-window*))
       (let ((str (aref *virtual-window* i)))
 	(draw-string (/ 0 *glyph-width*)
@@ -723,7 +724,6 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
   (* 8 (+ 1 (floor n 8))))
 
 (defun add-char (x y value &optional (win *win*))
-  (print (list x y))
   (setf (ref-grid x y (win-data win))
 	(make-glyph :value value
 		    :attributes (logior (win-attr-bits win)
