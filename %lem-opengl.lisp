@@ -437,6 +437,11 @@
    cursor-x
    data))
 
+(set-pprint-dispatch 'win 'print-win)
+(defun print-win (win &optional (stream *standard-output*))
+  (format stream "lines: ~a cols: ~a" (win-lines win) (win-cols win))
+  (print-grid (win-data win) stream))
+
 ;;window is an array of lines, for easy swapping and scrolling of lines. optimizations later
 (defun make-grid (rows columns)
   (let ((rows-array (make-array rows)))
@@ -459,9 +464,9 @@
 	 (setf ,place new)
 	 new))))
 
-(defun print-grid (grid)
+(defun print-grid (grid &optional (stream *standard-output*))
   (dotimes (grid-row (grid-rows grid))
-    (print (aref grid grid-row)))
+    (print (aref grid grid-row) stream))
   grid)
 
 (defun move-row (old-n new-n grid)
@@ -488,11 +493,13 @@
   grid-dest)
 
 (defun ncurses-newwin (nlines ncols begin-y begin-x)
-  (add-win (make-win :lines nlines
+  (let ((win (make-win :lines nlines
 		     :cols ncols
 		     :y begin-y
 		     :x begin-x
-		     :grid (make-grid nlines ncols))))
+		     :data (make-grid nlines ncols))))
+    (add-win win)
+    win))
 
 (defun ncurses-keypad (win value)
   (setf (win-keypad-p win) value))
@@ -579,6 +586,11 @@
   grid)
 (defun ncurses-wscrl (win n)
   (%ncurses-wscrl (win-data win) n))
+
+(struct-to-clos:struct->class
+ (defstruct glyph
+   value
+   attributes))
 
 
 #+nil
