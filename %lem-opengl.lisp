@@ -615,7 +615,13 @@
 
 (defparameter *clear-glyph* (make-glyph :value #\Space))
 
-(defun ncurses-mvwaddstr (win y x string))
+(defun ncurses-mvwaddstr (win y x string)
+  (setf (win-cursor-x win) x
+	(win-cursor-y win) y)
+  (ncurses-waddstr win string))
+(defun ncurses-waddstr (win string)
+  (dotimes (index (length string))
+    (ncurses-waddch win (aref string index))))
 (defun ncurses-wclrtoeol (&optional (win *win*))
   "The clrtoeol() and wclrtoeol() routines erase the current line to the right of the cursor, inclusive, to the end of the current line. https://www.mkssoftware.com/docs/man3/curs_clear.3.asp"
   (let ((x (win-cursor-x win))
@@ -697,7 +703,7 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 (defun char-control (char)
   ;;FIXME: not portable common lisp, requires ASCII
   (let ((value (char-code char)))
-	(if (> 64 value)
+	(if (> 32 value)
 	    t
 	    nil)))
 
