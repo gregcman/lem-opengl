@@ -241,6 +241,7 @@
       (abort-code (get-code "C-]"))
       (escape-code (get-code "escape")))
   (defun get-event ()
+    ;;FIXME
     (tagbody :start
       (return-from get-event
         (let ((code (charms/ll:getch)))
@@ -461,15 +462,18 @@
   (;;charms/ll:wmove
    %lem-opengl::ncurses-wmove
    (ncurses-view-scrwin view) y x)
+  ;;FIXME
   (charms/ll:wclrtoeol (ncurses-view-scrwin view)))
 
 (defmethod lem-if:clear-eob ((implementation sucle) view x y)
   (;;charms/ll:wmove
    %lem-opengl::ncurses-wmove
    (ncurses-view-scrwin view) y x)
+  ;;FIXME
   (charms/ll:wclrtobot (ncurses-view-scrwin view)))
 
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
+  ;;FIXME
   (let ((attr (attribute-to-bits 'modeline)))
     (charms/ll:attron attr)
     (when (and (ncurses-view-modeline-scrwin view)
@@ -495,10 +499,12 @@
           (;;charms/ll:wmove
 	   %lem-opengl::ncurses-wmove
 	   scrwin lem::*cursor-y* lem::*cursor-x*)))
+    ;;FIXME
     (charms/ll:wnoutrefresh scrwin)
     (charms/ll:doupdate)))
 
 (defmethod lem-if:scroll ((implementation sucle) view n)
+  ;;FIXME
   (charms/ll:wscrl (ncurses-view-scrwin view) n))
 
 (defmethod lem-if:clipboard-paste ((implementation sucle))
