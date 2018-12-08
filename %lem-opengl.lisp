@@ -248,6 +248,7 @@
     (gl:disable :depth-test)
 
     ;;"sprites"
+    #+nil
     (do-sprite-chain (sprite t) ()
       (with-slots (position string)
 	  sprite
