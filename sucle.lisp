@@ -435,17 +435,27 @@
 
 (defmethod lem-if:print ((implementation sucle) view x y string attribute)
   (let ((attr (attribute-to-bits attribute)))
-    (charms/ll:wattron (ncurses-view-scrwin view) attr)
-    ;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
+    (;;charms/ll:wattron
+     %lem-opengl::ncurses-wattron
+     (ncurses-view-scrwin view) attr)
+    ;;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
+    ;;FIXME
     (charms/ll:mvwaddstr (ncurses-view-scrwin view) y x string)
-    ;(charms/ll:scrollok (ncurses-view-scrwin view) 1)
-    (charms/ll:wattroff (ncurses-view-scrwin view) attr)))
+    ;;(charms/ll:scrollok (ncurses-view-scrwin view) 1)
+    (;;charms/ll:wattroff
+     %lem-opengl::ncurses-wattroff
+     (ncurses-view-scrwin view) attr)))
 
 (defmethod lem-if:print-modeline ((implementation sucle) view x y string attribute)
   (let ((attr (attribute-to-bits attribute)))
-    (charms/ll:wattron (ncurses-view-modeline-scrwin view) attr)
+    (;;charms/ll:wattron
+     %lem-opengl::ncurses-wattron
+     (ncurses-view-modeline-scrwin view) attr)
+    ;;FIXME
     (charms/ll:mvwaddstr (ncurses-view-modeline-scrwin view) y x string)
-    (charms/ll:wattroff (ncurses-view-modeline-scrwin view) attr)))
+    (;;charms/ll:wattroff
+     %lem-opengl::ncurses-wattroff
+     (ncurses-view-modeline-scrwin view) attr)))
 
 (defmethod lem-if:clear-eol ((implementation sucle) view x y)
   (charms/ll:wmove (ncurses-view-scrwin view) y x)
@@ -487,4 +497,4 @@
 (defmethod lem-if:clipboard-copy ((implementation sucle) text)
   (trivial-clipboard:text text))
 
-(pushnew :lem-ncurses *features*)
+(pushnew :lem-opengl *features*)

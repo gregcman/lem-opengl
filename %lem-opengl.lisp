@@ -431,7 +431,8 @@
    y
    x
    keypad-p ;;see https://linux.die.net/man/3/keypad
-   clearok))
+   clearok
+   attr-bits))
 
 (defun ncurses-newwin (nlines ncols begin-y begin-x)
   (add-win (make-win :lines nlines
@@ -465,6 +466,16 @@
 	(win-cols win) width))
 
 (defparameter *mouse-enabled-p* nil)
+
+(defun ncurses-wattron (win attr)
+  (let ((old (win-attr-bits win)))
+    (setf (win-attr-bits win)
+	  (logior attr old))))
+
+(defun ncurses-wattroff (win attr)
+  (let ((old (win-attr-bits win)))
+    (setf (win-attr-bits win)
+	  (logand (lognot attr) old))))
 
 
 #+nil
