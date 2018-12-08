@@ -442,8 +442,9 @@
      %lem-opengl::ncurses-wattron
      (ncurses-view-scrwin view) attr)
     ;;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
-    ;;FIXME
-    (charms/ll:mvwaddstr (ncurses-view-scrwin view) y x string)
+    (;;charms/ll:mvwaddstr
+     %lem-opengl::ncurses-mvwaddstr
+     (ncurses-view-scrwin view) y x string)
     ;;(charms/ll:scrollok (ncurses-view-scrwin view) 1)
     (;;charms/ll:wattroff
      %lem-opengl::ncurses-wattroff
@@ -454,8 +455,9 @@
     (;;charms/ll:wattron
      %lem-opengl::ncurses-wattron
      (ncurses-view-modeline-scrwin view) attr)
-    ;;FIXME
-    (charms/ll:mvwaddstr (ncurses-view-modeline-scrwin view) y x string)
+    (;;charms/ll:mvwaddstr
+     %lem-opengl::ncurses-mvwaddstr
+     (ncurses-view-modeline-scrwin view) y x string)
     (;;charms/ll:wattroff
      %lem-opengl::ncurses-wattroff
      (ncurses-view-modeline-scrwin view) attr)))
@@ -479,12 +481,22 @@
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   ;;FIXME
   (let ((attr (attribute-to-bits 'modeline)))
-    (charms/ll:attron attr)
+    (;;charms/ll:attron
+     %lem-opengl::ncurses-attron
+     attr)
     (when (and (ncurses-view-modeline-scrwin view)
                (< 0 (ncurses-view-x view)))
-      (charms/ll:move (ncurses-view-y view) (1- (ncurses-view-x view)))
-      (charms/ll:vline (char-code #\space) (1+ (ncurses-view-height view))))
-    (charms/ll:attroff attr)
+      (;;charms/ll:move
+       %lem-opengl::ncurses-move
+       (ncurses-view-y view)
+       (1- (ncurses-view-x view)))
+      (;;charms/ll:vline
+       %lem-opengl::ncurses-vline
+       (char-code #\space)
+       (1+ (ncurses-view-height view))))
+    (;;charms/ll:attroff
+     %lem-opengl::ncurses-attron
+     attr)
     (charms/ll:wnoutrefresh charms/ll:*stdscr*))
   (when (ncurses-view-modeline-scrwin view)
     (charms/ll:wnoutrefresh (ncurses-view-modeline-scrwin view)))

@@ -517,10 +517,28 @@
 		       :cols ncols
 		       :y begin-y
 		       :x begin-x
-		       :data (make-grid nlines ncols))))
+		       :cursor-x 0
+		       :cursor-y 0
+		       :data (make-grid nlines ncols)
+		       :attr-bits 0)))
     (add-win win)
     (setf *win* win)
     win))
+
+(defparameter *std-scr* (ncurses-newwin 25 80 0 0))
+
+(defun ncurses-move (y x)
+  (ncurses-wmove *std-scr* y x))
+
+(defun ncurses-vline (char n)
+  (ncurses-wvline *std-scr* char n))
+;;https://www.mkssoftware.com/docs/man3/curs_border.3.asp
+(defun ncurses-wvline (win char n)
+  (let ((y (win-cursor-y win))
+	(x (win-cursor-x win)))
+    (loop :for i :from y :below (min (+ y n)
+				     (win-lines win))
+       :do (add-char x i char))))
 
 (defun ncurses-keypad (win value)
   (setf (win-keypad-p win) value))
@@ -697,8 +715,19 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 (defun add-char (x y value &optional (win *win*))
   (setf (ref-grid x y (win-data win))
 	(make-glyph :value value
-		    :attributes (win-attr-bits win)))
+		    :attributes (logior (win-attr-bits win)
+					*current-attributes*)))
   win)
+
+;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
+#+nil "The other is to set the current-highlight value. This is logical-or'ed with any highlight you specify the first way. You do this with the functions attron(), attroff(), and attrset(); see the manual pages for details. Color is a special kind of highlight. The package actually thinks in terms of color pairs, combinations of foreground and background colors. The sample code above sets up eight color pairs, all of the guaranteed-available colors on black. Note that each color pair is, in effect, given the name of its foreground color. Any other range of eight non-conflicting values could have been used as the first arguments of the init_pair() values."
+(defparameter *current-attributes* 0)
+(defun ncurses-attron (n)
+  (setf *current-attributes*
+	(logior *current-attributes* n)))
+(defun ncurses-attroff (n)
+  (setf *current-attributes*
+	(logand *current-attributes* (lognot n))))
 
 (defun char-control (char)
   ;;FIXME: not portable common lisp, requires ASCII
