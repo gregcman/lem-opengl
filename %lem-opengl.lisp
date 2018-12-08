@@ -401,7 +401,8 @@
   (setf (gethash pair-counter *pairs*)
 	(cons fg bg)))
 (defun ncurses-color-pair (pair-counter)
-  (gethash pair-counter *pairs*))
+  ;;(gethash pair-counter *pairs*) ;;FIXME :what?
+  pair-counter)
 
 (defun ncurses-pair-content (pair-counter)
   (let ((pair (ncurses-color-pair pair-counter)))

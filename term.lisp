@@ -377,7 +377,8 @@
   ;;(charms/ll:init-pair *pair-counter* (car pair-color) (cdr pair-color))
   (%lem-opengl::ncurses-init-pair *pair-counter* (car pair-color) (cdr pair-color))
   (setf (gethash pair-color *color-pair-table*)
-	(%lem-opengl::ncurses-color-pair *pair-counter*)
+	*pair-counter* ;;FIXME wat
+	;;(%lem-opengl::ncurses-color-pair *pair-counter*)
         ;;(charms/ll:color-pair *pair-counter*)
 	)
   ;;FIXME:: return color-pair?

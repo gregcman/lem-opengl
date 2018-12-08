@@ -272,36 +272,39 @@
                  (get-key code))))))))
 
 (defun input-loop (editor-thread)
-  (application::just-main
-   (lambda ()
-     (block out
-       (handler-case
-	   (block cya
-	     (loop
-		(application:poll-app)
-		(%lem-opengl::per-frame)
-		(when (window:skey-j-p (window::keyval #\e))
-		  (application::quit))
-		#+nil
-		(handler-case
-		    (progn
-		      (unless (bt:thread-alive-p editor-thread) (return-from cya))
-		      (let ((event
-			     (cond ((window:skey-j-p (window::keyval #\e)) :abort))
-			      #+nil
-			      (get-event)))
-			(if (eq event :abort)
-			    (send-abort-event editor-thread nil)
-			    ;;(send-event event)
-			    )))
-		  #+sbcl
-		  (sb-sys:interactive-interrupt (c)
-		    (declare (ignore c))
-		    (send-abort-event editor-thread t)))))
-	 (exit-editor (c) (return-from out c)))))
-   :width (floor (* 80 %lem-opengl::*glyph-width*))
-   :height (floor (* 25 %lem-opengl::*glyph-height*))
-   :title ""))
+  (print 32434)
+  (funcall
+   (application::just-main
+    (lambda ()
+      (block out
+	(handler-case
+	    (block cya
+	      (loop
+		 (print 34234)
+		 (application:poll-app)
+		 (%lem-opengl::per-frame)
+		 (when (window:skey-j-p (window::keyval #\e))
+		   (application::quit))
+		 #+nil
+		 (handler-case
+		     (progn
+		       (unless (bt:thread-alive-p editor-thread) (return-from cya))
+		       (let ((event
+			      (cond ((window:skey-j-p (window::keyval #\e)) :abort))
+			       #+nil
+			       (get-event)))
+			 (if (eq event :abort)
+			     (send-abort-event editor-thread nil)
+			     ;;(send-event event)
+			     )))
+		   #+sbcl
+		   (sb-sys:interactive-interrupt (c)
+		     (declare (ignore c))
+		     (send-abort-event editor-thread t)))))
+	  (exit-editor (c) (return-from out c)))))
+    :width (floor (* 80 %lem-opengl::*glyph-width*))
+    :height (floor (* 25 %lem-opengl::*glyph-height*))
+    :title "")))
 
 #+nil
 (defun input-loop (editor-thread)
