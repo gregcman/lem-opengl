@@ -427,29 +427,28 @@
 
 (defun term-set-foreground (name)
   (multiple-value-bind (fg found) (get-color name)
-    (let ((bg (nth-value 1 (get-default-colors))))
-      (cond (found
-             (;;charms/ll:assume-default-colors
-	      %lem-opengl::ncurses-assume-default-color
-	      fg bg)
-             t)
-            (t
-             (error "Undefined color: ~A" name))))))
+    (cond (found
+	   (;;charms/ll:assume-default-colors
+	    %lem-opengl::ncurses-assume-default-color
+	    fg %lem-opengl::*bg-default*)
+	   t)
+	  (t
+	   (error "Undefined color: ~A" name)))))
 
 (defun term-set-background (name)
   (multiple-value-bind (bg found) (get-color name)
-    (let ((fg (nth-value 0 (get-default-colors))))
-      (cond (found
-             (;;charms/ll:assume-default-colors
-	      %lem-opengl::ncurses-assume-default-color
-	      fg bg)
-             t)
-            (t
-             (error "Undefined color: ~A" name))))))
+    (cond (found
+	   (;;charms/ll:assume-default-colors
+	    %lem-opengl::ncurses-assume-default-color
+	    %lem-opengl::*fg-default* bg)
+	   t)
+	  (t
+	   (error "Undefined color: ~A" name)))))
 
 (defun background-mode ()
   (let ((b (nth-value 1 (get-default-colors))))
-    (cond ((= b -1) :light)
+    (cond ((= b -1) :light
+	   )
           (t
            (let ((color (aref *colors* b)))
              (lem:rgb-to-background-mode (color-red color)

@@ -354,13 +354,13 @@
 		   (if (or
 			(not pair)
 			(= -1 fg))
-		       (bytecolor 3 3 3)
+		       (byte/255 *fg-default*) ;;FIXME :cache?
 		       (byte/255 fg)))
 		 (let ((bg (cdr pair)))
 		   (if (or
 			(not pair)
 			(= -1 bg))
-		       (byte/255 8)
+		       (byte/255 *bg-default*) ;;FIXME :cache?
 		       (byte/255 bg))))
 	  (vertex (floatify x)
 		  (floatify y)
@@ -465,26 +465,34 @@
   (setf sprite-chain::*sprites* (sprite-chain:make-sprite-chain))
   (bottom-layer))
 
-(defparameter *fg-default-really* 0)
-(defparameter *bg-default-really* #xffffff)
+(defparameter *fg-default-really* 15)
+(defparameter *bg-default-really* 0)
 
 (defparameter *fg-default* *fg-default-really*)
 (defparameter *bg-default* *bg-default-really*)
 
 (defparameter *pairs* (let ((pairs (make-hash-table)))
 			(setf (gethash 0 pairs)
-			      (cons *fg-default*
-				    *bg-default*) ;;;;FIXME whats white and black for default? short?
+			      (cons *fg-default-really*
+				    *bg-default-really*)
+ ;;;;FIXME whats white and black for default? short?
 			      )
 			pairs))
+(defparameter *color-pairs-lock* (bt:make-recursive-lock "color-pairs lock"))
+(defmacro with-color-pairs-lock (&body body)
+  `(bt:with-recursive-lock-held (*color-pairs-lock*)
+     ,@body))
 
 (defun ncurses-init-pair (pair-counter fg bg)
+  ;;(with-color-pairs-lock) 
   (setf (gethash pair-counter *pairs*)
 	(cons fg bg)))
 (defun ncurses-color-pair (pair-counter)
+  ;;(with-color-pairs-lock)
   (gethash pair-counter *pairs*)) ;;fixme -> this is not how ncurses works.
 
 (defun ncurses-pair-content (pair-counter)
+  ;(with-color-pairs-lock)
   (let ((pair (ncurses-color-pair pair-counter)))
     (values (car pair)
 	    (cdr pair))))
@@ -492,11 +500,12 @@
 (defun ncurses-assume-default-color (fg bg)
   ;;;;how ncurses works. see https://users-cs.au.dk/sortie/sortix/release/nightly/man/man3/assume_default_colors.3.html
   (setf *fg-default* (if (= fg -1)
-			 *fg-default-really*
+			 *fg-default*
 			 fg)
 	*bg-default* (if (= bg -1)
-			 *bg-default-really*
-			 bg)))
+			 *bg-default*
+			 bg))
+  (ncurses-init-pair 0 *fg-default* *bg-default*))
 
 (defparameter *ncurses-windows* (make-hash-table))
 (defun add-win (win)
