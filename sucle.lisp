@@ -289,12 +289,12 @@
 	   (block cya
 	     (text-sub::change-color-lookup
 	      ;;'text-sub::color-fun
-	      ;;'lem-sucle::color-fun
-	      ;;#+nil
+	      'lem-sucle::color-fun
+	      #+nil
 	      (lambda (n)
 		(values-list
-		 (mapcar (lambda (x) (utility:byte/255 (utility::floatify x)))
-			 (nbutlast (aref lem.term::*colors* n)))))
+		 (print (mapcar (lambda (x) (utility::floatify x))
+				(nbutlast (aref lem.term::*colors* n))))))
 	      )
 	     (application::refresh '%lem-opengl::virtual-window)
 	     (application::refresh '%lem-opengl::event-queue)
@@ -616,7 +616,16 @@
 
 (pushnew :lem-opengl *features*)
 
-#+nil
+;;#+nil
+(defun c6? (x)
+  (let ((acc nil))
+    (loop
+       (push (mod x 6) acc)
+       (setf x (floor x 6))
+       (when (zerop x)
+	 (return)))
+    acc))
+
 (defun color-fun (color)
     (labels ((bcolor (r g b)
 	       (values (/ (utility::floatify r) 255.0)
@@ -625,14 +634,16 @@
 	     (c (r g b)
 	       (bcolor r g b))
 	     (c6 (x)
-	       (let ((b (mod x 6))
-		     (g (mod (floor x 6) 6))
-		     (r (mod (floor x 36) 6)))
+	       (destructuring-bind (r g b) (last (append (list 0 0 0)
+							 (c6? x))
+						 3)
 		 (bcolor (* 51 r)
 			 (* 51 g)
 			 (* 51 b))))
 	     (g (x)
-	       (c (* x 16) (* x 16) (* x 16))))
+	       (let* ((magic (load-time-value (/ 255.0 23.0)))
+		      (val (* x magic)))
+		 (c val val val))))
       (case color
 	(0 (c 0 0 0))
 	(1 (c 205 0 0))
@@ -650,7 +661,6 @@
 	(13 (c 255 0 255))
 	(14 (c 0 255 255))
 	(15 (c 255 255 255))
-	(t (let ((c (- color 16)))
-	     (if (< c 216)
-		 (c6 c)
-		 (g (- c 216))))))))
+	(t (if (< color (+ 16 (* 6 6 6)))
+	       (c6 (- color 16))
+	       (g (- color (+ 16 (* 6 6 6)))))))))

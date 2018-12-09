@@ -465,7 +465,7 @@
   (setf sprite-chain::*sprites* (sprite-chain:make-sprite-chain))
   (bottom-layer))
 
-(defparameter *fg-default-really* 15)
+(defparameter *fg-default-really* 8)
 (defparameter *bg-default-really* 0)
 
 (defparameter *fg-default* *fg-default-really*)
@@ -478,21 +478,14 @@
  ;;;;FIXME whats white and black for default? short?
 			      )
 			pairs))
-(defparameter *color-pairs-lock* (bt:make-recursive-lock "color-pairs lock"))
-(defmacro with-color-pairs-lock (&body body)
-  `(bt:with-recursive-lock-held (*color-pairs-lock*)
-     ,@body))
 
 (defun ncurses-init-pair (pair-counter fg bg)
-  ;;(with-color-pairs-lock) 
   (setf (gethash pair-counter *pairs*)
 	(cons fg bg)))
 (defun ncurses-color-pair (pair-counter)
-  ;;(with-color-pairs-lock)
   (gethash pair-counter *pairs*)) ;;fixme -> this is not how ncurses works.
 
 (defun ncurses-pair-content (pair-counter)
-  ;(with-color-pairs-lock)
   (let ((pair (ncurses-color-pair pair-counter)))
     (values (car pair)
 	    (cdr pair))))
