@@ -311,6 +311,88 @@
          (key (char-to-key char)))
     key))
 
+(defparameter *message-on-mouse-event* nil)
+
+(defvar *dragging-window* ())
+
+(defun move-to-cursor (window x y)
+  (lem:move-point (lem:current-point) (lem::window-view-point window))
+  (lem:move-to-next-virtual-line (lem:current-point) y)
+  (lem:move-to-virtual-line-column (lem:current-point) x))
+
+(defun parse-mouse-event-aux (state x y)
+  (parse-mouse-event (list (if state
+			       #\M
+			       #\m
+			       )
+			   0
+			   x
+			   y)))
+
+(defun parse-mouse-event
+    (&optional
+       (msg
+	#+nil
+	(loop :for c := (prog1 (code-char (charms/ll:getch))
+			  (charms/ll:timeout -1))
+	   :with result
+	   :with part
+	   :until (or (char= c #\m)
+		      (char= c #\M))
+	   :when (char= c #\;)
+	   :do (setq result #1=(cons (parse-integer (format nil "~{~A~}"
+							    (reverse part)))
+				     result)
+		     part nil)
+	   :else
+	   :do (push c part)
+	   :finally (return (cons c (reverse #1#))))))
+  "msg is ((or #\M #\m) mouse-button=0 x y). M = down m =up" 
+  (lambda ()
+    (when (zerop (second msg))
+      (let ((mouse-x (third msg))
+	    (mouse-y (fourth msg)))
+	(cond ((and (eql (first msg) #\M)) ;; button-1 down
+	       (find-if (lambda(o)
+			  (let ((x (lem:window-x o))
+				(w (lem:window-width o))
+				(y (lem:window-y o))
+				(h (lem:window-height o)))
+			    (or
+			     (and (< x mouse-x (+ 1 x w))
+				  (= y mouse-y)
+				  (setf *dragging-window* (list o 'y)))
+			     (and (= x mouse-x)
+				  (< y mouse-y (+ -1 y h))
+				  (setf *dragging-window* (list o 'x)))
+			     (and (< x mouse-x (+ 1 x w))
+				  (< y mouse-y (+ -1 y h))
+				  (lem:send-event
+				   (lambda ()
+				     (setf (lem:current-window) o)
+				     (move-to-cursor
+				      o
+				      (- mouse-x x 1)
+				      (- mouse-y y 1))
+				     (lem:redraw-display)))))))
+			(lem:window-list)))
+	      ((and  ;; button-1 up
+		(eql (first msg) #\m))
+	       (when (windowp (first *dragging-window*))
+		 (if (eql (second *dragging-window*) 'x)
+		     (lem:shrink-window-horizontally
+		      (- (lem:window-x (first *dragging-window*))
+			 mouse-x))
+		     (lem:shrink-window
+		      (- (lem:window-y (first *dragging-window*))
+			 mouse-y))))
+	       (when (first *dragging-window*)
+		 (setf *dragging-window*
+		       (list nil (cddr msg) *dragging-window*)))))))
+    (when *message-on-mouse-event*
+      (lem:message "mouse:~S" msg))
+    (lem:redraw-display)))
+
 
 #+nil
 (let ((resize-code (get-code "[resize]"))
