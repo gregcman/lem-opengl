@@ -318,24 +318,19 @@
   (lem:move-point (lem:current-point) (lem::window-view-point window))
   (lem:move-to-next-virtual-line (lem:current-point) y)
   (lem:move-to-virtual-line-column (lem:current-point)
-                                   (mouse-get-pos-x (lem:window-view window) x y)))
+                                   x))
 (defun mouse-get-window-rect (window)
   (values (lem:window-x      window)
           (lem:window-y      window)
           (lem:window-width  window)
           (lem:window-height window)))
 
-(defun mouse-event-proc (bstate x1 y1)
+(defun mouse-event-proc (state x1 y1)
   (lambda ()
     (cond
       ;; button1 down
-      ((logtest bstate (logior ;;charms/ll:BUTTON1_PRESSED
-                               ;;charms/ll:BUTTON1_CLICKED
-                               ;;charms/ll:BUTTON1_DOUBLE_CLICKED
-                               ;;charms/ll:BUTTON1_TRIPLE_CLICKED
-			       ))
-       (let ((press (logtest bstate ;;charms/ll:BUTTON1_PRESSED
-			     )))
+      ((eq state t)
+       (let ((press state))
          (find-if
           (lambda(o)
             (multiple-value-bind (x y w h) (mouse-get-window-rect o)
@@ -357,8 +352,7 @@
                 (t nil))))
           (lem:window-list))))
       ;; button1 up
-      ((logtest bstate ;;charms/ll:BUTTON1_RELEASED
-		)
+      ((null state)
        (let ((o (first *dragging-window*)))
          (when (windowp o)
            (multiple-value-bind (x y w h) (mouse-get-window-rect o)
@@ -393,18 +387,6 @@
          (when o
            (setf *dragging-window*
                  (list nil (list x1 y1) *dragging-window*)))))
-      ;; wheel up
-      #+nil
-      ((logtest bstate ;;charms/ll:BUTTON4_PRESSED
-		)
-       (lem:scroll-up 3)
-       (lem:redraw-display))
-      ;; wheel down
-      #+nil
-      ((logtest bstate ;;charms/ll:BUTTON5_PRESSED
-		)
-       (lem:scroll-down 3)
-       (lem:redraw-display))
       )))
 
 #+nil
@@ -515,16 +497,14 @@
 						 :ctrl window::*control*))
 			   (format t "~s key unimplemted" name))))))))))
 	
-	(send-event (lambda ()
-		      (parse-mouse-event
-		       (parse-mouse-event-aux
-			(window::skey-p
-			 (window::mouseval :left)
-			 window::*control-state*)
-			(floor window::*mouse-x*
-			       %lem-opengl::*glyph-width*)
-			(floor window::*mouse-y*
-			       %lem-opengl::*glyph-height*)))))
+	(send-event (mouse-event-proc 
+		      (window::skey-p
+		       (window::mouseval :left)
+		       window::*control-state*)
+		      (floor window::*mouse-x*
+			     %lem-opengl::*glyph-width*)
+		      (floor window::*mouse-y*
+			     %lem-opengl::*glyph-height*)))
 	#+nil
 	(let ((event))
 	  
