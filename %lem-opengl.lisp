@@ -295,9 +295,8 @@
 	       (incf x)))))))
 
 (defun render-stuff ()
-  (progn
-   ;;text-sub::with-data-shader (uniform rebase)
-  ;;  (gl:clear :color-buffer-bit)
+  (;;text-sub::with-data-shader (uniform rebase)
+   ;; (gl:clear :color-buffer-bit)
  ;;   (gl:disable :depth-test)
 
     ;;"sprites"
@@ -339,62 +338,69 @@
     (gl:end))
   (when *update-p*
     (setf *update-p* nil)
-    (cffi:with-foreign-object
-     (arr :uint8 (* 4
-		    *columns*
-		    *lines*))
-     (let ((len (length *virtual-window*)))
-       (dotimes (i len)
-	 (let ((array (aref *virtual-window* (- len i 1))))
-	   (let ((len (length array)))
-	     (dotimes (index len)
+    (let* ((c-array-lines (+ 1 *lines*))
+	   (c-array-columns (+ 1 *columns*))
+	   (c-array-len (* 4
+			   c-array-columns
+			   c-array-lines)))
+      (cffi:with-foreign-object
+       (arr :uint8 c-array-len)
+       (dotimes (i c-array-len)
+	 (setf (cffi:mem-ref arr :uint8 i) 0))
+       (let ((len *lines*))
+	 (dotimes (i len)
+	   (let ((array (aref *virtual-window* (- len i 1))))
+	     (dotimes (index *columns*)
 	       (let* ((glyph (aref array index))
-		      (attributes (glyph-attributes glyph)))
-		 (let ((pair (ncurses-color-pair (mod attributes 256))))
-		   (flet ((color (r g b a)
-			    (let ((base (* 4 (+ (* index)
-						(* i *columns*)))))
-			      (setf (cffi:mem-ref arr :uint8 (+ 0 base)) r
-				    (cffi:mem-ref arr :uint8 (+ 1 base)) g
-				    (cffi:mem-ref arr :uint8 (+ 2 base)) b
-				    (cffi:mem-ref arr :uint8 (+ 3 base)) a)))
-			  (byte/255 (n)
-			    (identity n)))
-		     (color (byte/255
-			     (char-code (glyph-value glyph)))
-			    (let ((fg (car pair)))
-			      (if (or
-				   (not pair)
-				   (= -1 fg))
-				  (byte/255
-				   *fg-default*) ;;FIXME :cache?
-				  (byte/255
-				   fg)))
-			    (let ((bg (cdr pair)))
-			      (if (or
-				   (not pair)
-				   (= -1 bg))
-				  (byte/255
-				   *bg-default*) ;;FIXME :cache?
-				  (byte/255
-				   bg)))
-			    (byte/255
-			     (logior (if (logtest A_Underline attributes)
-					 1
-					 0)
-				     (if (logtest A_bold attributes)
-					 2
-					 0))))
-		     #+nil
-		     (vertex (floatify x)
-			     (floatify y)
-			     0.0))
+		      (attributes (glyph-attributes glyph))
+		      (pair (ncurses-color-pair (mod attributes 256))))
+		 (flet ((color (r g b a)
+			  (let ((base (* 4 (+ (* index)
+					      (* i c-array-columns)))))
+			    (setf (cffi:mem-ref arr :uint8 (+ 0 base)) r
+				  (cffi:mem-ref arr :uint8 (+ 1 base)) g
+				  (cffi:mem-ref arr :uint8 (+ 2 base)) b
+				  (cffi:mem-ref arr :uint8 (+ 3 base)) a)))
+			(byte/255 (n)
+			  (identity n)))
+		   (color (byte/255
+			   (char-code (glyph-value glyph)))
+			  (let ((fg (car pair)))
+			    (if (or
+				 (not pair)
+				 (= -1 fg))
+				(byte/255
+				 *fg-default*) ;;FIXME :cache?
+				(byte/255
+				 fg)))
+			  (let ((bg (cdr pair)))
+			    (if (or
+				 (not pair)
+				 (= -1 bg))
+				(byte/255
+				 *bg-default*) ;;FIXME :cache?
+				(byte/255
+				 bg)))
+			  (byte/255
+			   (logior (if (logtest A_Underline attributes)
+				       1
+				       0)
+				   (if (logtest A_bold attributes)
+				       2
+				       0))))
 		   #+nil
-		   (incf x))))))))
-     (let* ((framebuffer (getfnc 'text-sub::text-data))
-	    (texture (glhelp::texture framebuffer)))
-       (gl:bind-texture :texture-2d texture)
-       (gl:tex-sub-image-2d :texture-2d 0 0 0 *columns* *lines* :rgba :unsigned-byte arr))))
+		   (vertex (floatify x)
+			   (floatify y)
+			   0.0))
+		 #+nil
+		 (incf x))))))
+       (let* ((framebuffer (getfnc 'text-sub::text-data))
+	      (texture (glhelp::texture framebuffer)))
+	 (gl:bind-texture :texture-2d texture)
+	 (gl:tex-sub-image-2d :texture-2d 0 0 0
+			      c-array-columns
+			      c-array-lines
+			      :rgba :unsigned-byte arr)))))
   
   (text-sub::with-text-shader (uniform)
     (gl:uniform-matrix-4fv
@@ -403,7 +409,6 @@
      nil)   
     (glhelp::bind-default-framebuffer)
     (glhelp:set-render-area 0 0 (getfnc 'application::w) (getfnc 'application::h))
-
     #+nil
     (progn
       (gl:enable :blend)
