@@ -491,7 +491,7 @@
 			      (char-code (char-downcase (code-char code)))
 			      window::*shift*
 			      window::*control*
-			      window::*alt*
+			      nil;;window::*alt* ;;FIXME -> makes M-X not M-x
 			      window::*super*)
 			   (let ((key (code-to-key byte)))
 			     (send-event
