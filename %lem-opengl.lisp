@@ -80,7 +80,7 @@
 	*lines* (floor h *glyph-height*))
   (with-virtual-window-lock
     (setf *virtual-window* (make-virtual-window))))
-
+#+nil
 (defclass sprite ()
   ((bounding-box :accessor sprite.bounding-box
 		 :initform (make-instance 'rectangle
@@ -142,28 +142,33 @@
 	       (setf x (1+ x))))))
     (values (max x maxx) y)))
 
-(defparameter *selection* nil)
-(defparameter *hovering* nil)
-(defparameter *drag-offset-x* 0.0)
-(defparameter *drag-offset-y* 0.0)
+#+nil
+(progn
+  (defparameter *selection* nil)
+  (defparameter *hovering* nil)
+  (defparameter *drag-offset-x* 0.0)
+  (defparameter *drag-offset-y* 0.0))
 
 (defun init ())
 (defun app ()
-  (setf *mouse-x* (floatify window::*mouse-x*)
-	*mouse-y* (- window::*height* (floatify window::*mouse-y*)))
-  (when (window::skey-j-p (window::keyval #\esc))
-    (pop-sprite-chain-stack))
-  (do-sprite-chain (sprite t) ()
-    (let ((fun (sprite.tickfun sprite)))
-      (when fun
-	(funcall fun))))
-  (when 
-    (window::skey-j-p (window::mouseval 4))
-    (typecase *hovering*
-      (sprite
-       (sprite-chain:remove-sprite *hovering*)
-       (setf *hovering* nil))))
+  #+nil
+  (progn
+    (setf *mouse-x* (floatify window::*mouse-x*)
+	  *mouse-y* (- window::*height* (floatify window::*mouse-y*)))
+    (when (window::skey-j-p (window::keyval #\esc))
+      (pop-sprite-chain-stack))
+    (do-sprite-chain (sprite t) ()
+      (let ((fun (sprite.tickfun sprite)))
+	(when fun
+	  (funcall fun))))
+    (when 
+	(window::skey-j-p (window::mouseval 4))
+      (typecase *hovering*
+	(sprite
+	 (sprite-chain:remove-sprite *hovering*)
+	 (setf *hovering* nil)))))
 
+  #+nil
   (let ((mousex *mouse-x*)
 	(mousey *mouse-y*))
       ;;search for topmost sprite to drag
@@ -195,9 +200,10 @@
 		    (setf x xnew))
 		  (unless (eq y ynew)
 		    (setf y ynew)))))))
+  #+nil
   (when (window::skey-j-r (window::mouseval 5))
     (setf *selection* nil))
-  
+  #+nil
   (do-sprite-chain (sprite t) ()
     (update-bounds sprite))
   
@@ -210,7 +216,7 @@
   (gl:disable :blend)
 
   (render-stuff))
-
+#+nil
 (defun update-bounds (sprite)
   (with-slots (bounding-box position absolute-rectangle)
       sprite
@@ -255,12 +261,14 @@
   (deflazy flat-shader (flat-shader-source gl-context)
     (glhelp::create-gl-program flat-shader-source)))
 
+#+nil
 (defun bytecolor (r g b &optional (a 3))
   "each channel is from 0 to 3"
   (byte/255		    
    (text-sub::color-rgba r g b a)
    ))
 
+#+nil
 (defun draw-string
     (x y string &optional
 		  (fgcol
@@ -378,6 +386,7 @@
 		  0.0)			  
 	  (incf x))))))
 
+#+nil
 (defun plain-button (fun &optional
 			   (str (string (gensym "nameless-button-")))
 			   (pos (random-point))
@@ -392,6 +401,7 @@
 	    onclick fun)))
   sprite)
 
+#+nil
 (progn
   (defparameter *sprite-chain-stack* nil)
   (defparameter *sprite-chain-stack-depth* 0)
@@ -407,7 +417,7 @@
   (defun replace-sprite-chain-stack ()
     (pop-sprite-chain-stack)
     (push-sprite-chain-stack)))
-
+#+nil
 (defun bottom-layer ()
   #+nil
   (add-sprite
@@ -452,7 +462,7 @@
 	(string-bounding-box numbuf rect))
       :string numbuf
       ))))
-
+#+nil
 (defun new-layer ()
   (push-sprite-chain-stack)
   (add-sprite 
@@ -471,7 +481,7 @@
    (plain-button
     nil
     (format nil "layer ~a" *sprite-chain-stack-depth*))))
-
+#+nil
 (progn
   (setf sprite-chain::*sprites* (sprite-chain:make-sprite-chain))
   (bottom-layer))
@@ -513,7 +523,7 @@
 
 (defparameter *ncurses-windows* (make-hash-table))
 (defun add-win (win)
-  (setf (gethash win *ncurses-windows*)
+   (setf (gethash win *ncurses-windows*)
 	t))
 (defun remove-win (win)
   (remhash win *ncurses-windows*))
