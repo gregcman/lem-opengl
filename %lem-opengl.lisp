@@ -40,16 +40,40 @@
    :height (floor (* *lines* *glyph-height*))
    :title ""))
 
+#+nil
 (struct-to-clos:struct->class
  (defstruct glyph
    value
    attributes))
 
-(defun print-glyph (stream glyph)
-  (write-char (glyph-value glyph) stream))
-(set-pprint-dispatch 'glyph 'print-glyph)
+(deftype glyph () `(unsigned-byte 10))
+(defun glyph-value (glyph)
+  (declare (type fixnum glyph))
+  (declare (optimize (speed 3)
+		     (safety 0)))
+  (code-char (logand glyph (utility::etouq (1- (expt 2 8))))))
+(defun glyph-attributes (glyph)
+  (declare (type fixnum glyph))
+  (declare (optimize (speed 3)
+		     (safety 0)))
+  (ash (logand glyph (utility::etouq (lognot (1- (expt 2 8))))) -8))
 
-(defparameter *clear-glyph* (make-glyph :value #\Space :attributes 0))
+(defun gen-glyph (value attributes)
+  (declare (optimize (speed 3)
+		     (safety 0)))
+  #+nil
+  (make-glyph :value value
+	      :attributes attributes)
+  (logior (char-code value)
+	  (the fixnum (ash (the fixnum attributes) 8))))
+
+#+nil
+(progn
+  (defun print-glyph (stream glyph)
+    (write-char (glyph-value glyph) stream))
+  (set-pprint-dispatch 'glyph 'print-glyph))
+
+(defparameter *clear-glyph* (gen-glyph #\Space 0))
 
 
 (defun make-virtual-window ()
@@ -743,8 +767,14 @@
 	  (1 :normal)
 	  (2 :very-visible))))
 
-(defparameter A_BOLD #x00200000)
-(defparameter A_UNDERLINE #x00020000)
+(defparameter A_BOLD
+  #b100000000 ;;8 bits for char, could be 7?
+  ;;#x00200000
+  )
+(defparameter A_UNDERLINE
+  #b1000000000
+  ;;#x00020000
+  )
 
 (defun %ncurses-wscrl (grid n)
   (let ((width (grid-columns grid)))
@@ -856,9 +886,9 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
   (when (and (> (win-lines win) y -1)
 	     (> (win-cols win) x -1))
     (setf (ref-grid x y (win-data win))
-	  (make-glyph :value value
-		      :attributes (logior (win-attr-bits win)
-					  *current-attributes*))))
+	  (gen-glyph value
+		     (logior (win-attr-bits win)
+			     *current-attributes*))))
   win)
 
 ;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
@@ -919,6 +949,10 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 (defun ncurses-doupdate ()
   (setf *update-p* t)) ;;;when copied to opengl buffer, set again to nil
 
+(defun coerce-to-char (x)
+  (typecase x
+    (number (code-char x))
+    (character x)))
 (defun print-virtual-window (&optional (array *virtual-window*) (stream *standard-output*))
   (with-virtual-window-lock
     (let ((horizontal-bar (+ 2 (length (aref array 0)))))
@@ -929,7 +963,7 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	(write-char #\| stream)
 	(let ((line-array (aref array line)))
 	  (dotimes (i (length line-array))
-	    (write-char (glyph-value (aref line-array i)) stream)))
+	    (write-char (coerce-to-char (glyph-value (aref line-array i))) stream)))
 	(write-char #\| stream))
       (terpri stream)
       (dotimes (i horizontal-bar) (write-char #\_ stream))

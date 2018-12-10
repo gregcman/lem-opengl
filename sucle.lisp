@@ -620,10 +620,12 @@
 
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   (with-view-lock view
+    #+nil ;;;FIXME
     (let ((attr (attribute-to-bits 'modeline)))
       (;;charms/ll:attron
        %lem-opengl::ncurses-attron
        attr)
+      #+nil ;;FIXME:: disabling 
       (when (and (ncurses-view-modeline-scrwin view)
 		 (< 0 (ncurses-view-x view)))
 	(;;charms/ll:move
@@ -635,7 +637,7 @@
 	 (char-code #\space)
 	 (1+ (ncurses-view-height view))))
       (;;charms/ll:attroff
-       %lem-opengl::ncurses-attron
+       %lem-opengl::ncurses-attroff
        attr)
       (;;charms/ll:wnoutrefresh
        %lem-opengl::ncurses-wnoutrefresh
