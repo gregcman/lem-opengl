@@ -174,8 +174,13 @@
   (defparameter *drag-offset-x* 0.0)
   (defparameter *drag-offset-y* 0.0))
 
+(defparameter *last-scroll* 0)
+(defparameter *scroll-difference* 0)
 (defun init ())
 (defun app ()
+  (let ((newscroll (floor window::*scroll-y*)))
+    (setf *scroll-difference* (- newscroll *last-scroll*))
+    (setf *last-scroll* newscroll))
   #+nil
   (setf *mouse-x* (floatify window::*mouse-x*)
 	*mouse-y* (- window::*height* (floatify window::*mouse-y*)))
