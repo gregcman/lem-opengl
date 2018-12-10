@@ -403,8 +403,7 @@
 			(pair (ncurses-color-pair (mod attributes 256))))
 		   (flet ((byte/255 (n)
 			    (identity n)))
-		     (color (byte/255
-			     (char-code (glyph-value glyph)))
+		     (let ((realfg
 			    (let ((fg (car pair)))
 			      (if (or
 				   (not pair)
@@ -412,7 +411,8 @@
 				  (byte/255
 				   *fg-default*) ;;FIXME :cache?
 				  (byte/255
-				   fg)))
+				   fg))))
+			   (realbg
 			    (let ((bg (cdr pair)))
 			      (if (or
 				   (not pair)
@@ -420,16 +420,22 @@
 				  (byte/255
 				   *bg-default*) ;;FIXME :cache?
 				  (byte/255
-				   bg)))
-			    (byte/255
-			     (logior (if (logtest A_Underline attributes)
-					 1
-					 0)
-				     (if (logtest A_bold attributes)
-					 2
-					 0)))
-			    index
-			    i)
+				   bg)))))
+		       (when (logtest A_reverse attributes)
+			 (rotatef realfg realbg))
+		       (color (byte/255
+			       (char-code (glyph-value glyph)))
+			      realfg
+			      realbg
+			      (byte/255
+			       (logior (if (logtest A_Underline attributes)
+					   1
+					   0)
+				       (if (logtest A_bold attributes)
+					   2
+					   0)))
+			      index
+			      i))
 		     #+nil
 		     (vertex (floatify x)
 			     (floatify y)
@@ -781,6 +787,9 @@
   #b1000000000
   ;;#x00020000
   )
+(defparameter A_REVERSE
+  #b10000000000
+  )
 
 (defun %ncurses-wscrl (grid n)
   (let ((width (grid-columns grid)))
@@ -926,6 +935,7 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      win))
   win)
 
+(defparameter *no* *standard-output*)
 
 (defun ncurses-wnoutrefresh (&optional (win *win*))
   ;;;FIXME:: follow https://linux.die.net/man/3/wnoutrefresh with "touching"
@@ -937,6 +947,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
     (let ((grid (win-data win))
 	  (xwin (win-x win))
 	  (ywin (win-y win))
+	  ;;(cursor-x (win-cursor-x win))
+	  ;;(cursor-y (win-cursor-y win))
 	  (columns (length (aref *virtual-window* 0)))
 	  (lines (length *virtual-window*)))
       (dotimes (y (win-lines win))
@@ -946,6 +958,11 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 		  (ydest (+ ywin y)))
 	      (when (and (> columns xdest -1)
 			 (> lines ydest -1))
+		#+nil
+		(if (or (= cursor-x x)
+			(= y cursor-y)
+			 )
+		    (setf glyph (logior glyph A_Reverse))) 
 		(set-virtual-window xdest
 				    ydest
 				    glyph

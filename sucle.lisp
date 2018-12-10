@@ -23,27 +23,24 @@
 (defun get-sym-from-glfw3-code (code)
   (gethash code *keycodes2*))
 
-#+nil
 (defvar *keycode-table* (make-hash-table))
-#+nil
 (defvar *keyname-table* (make-hash-table :test 'equal))
-#+nil
 (defun defkeycode (name code &optional key)
   (setf (gethash name *keyname-table*) code)
   (when key (setf (gethash code *keycode-table*) key)))
-#+nil
 (defun get-code (name)
   (let ((code (gethash name *keyname-table*)))
     (assert code)
     code))
-#+nil
 (defun char-to-key (char)
   (or (gethash (char-code char) *keycode-table*)
       (make-key :sym (string char))))
-#+nil
+(defun code-to-key (code)
+  (or (gethash code *keycode-table*)
+      (make-key :sym (string (code-char code)))))
 (defun get-key-from-name (name)
   (char-to-key (code-char (get-code name))))
-#+nil
+
 (progn
   (defkeycode "C-@" 0 (make-key :ctrl t :sym "@"))
   (defkeycode "C-a" 1 (make-key :ctrl t :sym "a"))
@@ -54,19 +51,19 @@
   (defkeycode "C-f" 6 (make-key :ctrl t :sym "f"))
   (defkeycode "C-g" 7 (make-key :ctrl t :sym "g"))
   (defkeycode "C-h" 8 (make-key :ctrl t :sym "h")))
-#+nil
+;;#+nil
 (defkeycode "C-i" 9 (make-key :sym "Tab"))
 (define-key-code "Tab" :tab)
-#+nil
+;;#+nil
 (progn
   (defkeycode "C-j" 10 (make-key :ctrl t :sym "j"))
   (defkeycode "C-k" 11 (make-key :ctrl t :sym "k"))
   (defkeycode "C-l" 12 (make-key :ctrl t :sym "l")))
-#+nil
+;;#+nil
 (defkeycode "C-m" 13 (make-key :sym "Return"))
 ;;FIXME:: is enter 10 or 13? have multiple keys like keypad?
 (define-key-code "Return" :enter)
-#+nil
+;;#+nil
 (progn
   (defkeycode "C-n" 14 (make-key :ctrl t :sym "n"))
   (defkeycode "C-o" 15 (make-key :ctrl t :sym "o"))
@@ -81,10 +78,10 @@
   (defkeycode "C-x" 24 (make-key :ctrl t :sym "x"))
   (defkeycode "C-y" 25 (make-key :ctrl t :sym "y"))
   (defkeycode "C-z" 26 (make-key :ctrl t :sym "z")))
-#+nil
+;;#+nil
 (defkeycode "escape" 27 (make-key :sym "Escape"))
-(define-key-code "Escape" :escape)
-#+nil
+(define-key-code "Escape" :escape) ;;fixme:: not found?
+;;#+nil
 (progn
   (defkeycode "C-\\" 28 (make-key :ctrl t :sym "\\"))
   (defkeycode "C-]" 29 (make-key :ctrl t :sym "]"))
@@ -97,7 +94,7 @@
 (defkeycode "[backspace]" #x7F (make-key :sym "Backspace"))
 (define-key-code "Backspace" :backspace)
 
-#+nil ;;FIXME -> character keys
+;;#+nil ;;FIXME -> character keys
 (loop :for code :from #x21 :below #x7F
    :do (let ((string (string (code-char code))))
             (defkeycode string code (make-key :sym string))))
@@ -488,14 +485,35 @@
 		  ;;(print (list name type))
 		  (case type
 		    (:key
-		     (let ((key (get-sym-from-glfw3-code name)))
-		       (if key
-			   (send-event (make-key :sym key
-						 :meta window::*alt*
-						 :super window::*super*
-						 :shift window::*shift*
-						 :ctrl window::*control*))
-			   (format t "~s key unimplemted" name))))))))))
+		     (if (window::character-key-p code)
+			 (multiple-value-bind (byte)
+			     (character-modifier-bits:character-modifier-bits
+			      (char-code (char-downcase (code-char code)))
+			      window::*shift*
+			      window::*control*
+			      window::*alt*
+			      window::*super*)
+			   (let ((key (code-to-key byte)))
+			     (send-event
+			      (make-key :sym (key-sym key)
+					:ctrl (or (key-ctrl key)
+						  window::*control*)
+					:shift (or (key-shift key)
+						 ;  window::*shift*
+						   )
+					:meta (or (key-meta key)
+						  window::*alt*)
+					:super (or (key-super key)
+						   window::*super*)))))
+			 (let ((key (get-sym-from-glfw3-code name)))
+			   (if key
+			       (send-event (make-key :sym key
+						     :meta window::*alt*
+						     :super window::*super*
+						     :shift window::*shift*
+						     :ctrl window::*control*))
+			       (format *error-output*
+				       "~s key unimplemted" name)))))))))))
 	
 	(send-event (mouse-event-proc 
 		      (window::skey-p
