@@ -564,7 +564,7 @@
   (setf sprite-chain::*sprites* (sprite-chain:make-sprite-chain))
   (bottom-layer))
 
-(defparameter *fg-default-really* 8)
+(defparameter *fg-default-really* 15)
 (defparameter *bg-default-really* 0)
 
 (defparameter *fg-default* *fg-default-really*)
