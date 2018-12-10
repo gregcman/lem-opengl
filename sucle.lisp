@@ -664,3 +664,7 @@
 	(t (if (< color (+ 16 (* 6 6 6)))
 	       (c6 (- color 16))
 	       (g (- color (+ 16 (* 6 6 6)))))))))
+
+(defun start-lem ()
+  (let ((lem::*in-the-editor* nil))
+    (lem:main '("/home/imac/Documents/common-lisp/sucle.lisp"))))

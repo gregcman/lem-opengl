@@ -347,8 +347,9 @@
 (defun draw-glyphs-array (x y array)
   (let ((len (length array)))
     (dotimes (index len)
-      (let ((glyph (aref array index)))
-	(let ((pair (ncurses-color-pair (mod (glyph-attributes glyph) 256))))
+      (let* ((glyph (aref array index))
+	     (attributes (glyph-attributes glyph)))
+	(let ((pair (ncurses-color-pair (mod attributes 256))))
 	  (color (byte/255 (char-code (glyph-value glyph)))
 		 (let ((fg (car pair)))
 		   (if (or
@@ -361,7 +362,13 @@
 			(not pair)
 			(= -1 bg))
 		       (byte/255 *bg-default*) ;;FIXME :cache?
-		       (byte/255 bg))))
+		       (byte/255 bg)))
+		 (byte/255 (logior (if (logtest A_Underline attributes)
+				       1
+				       0)
+				   (if (logtest A_bold attributes)
+				       2
+				       0))))
 	  (vertex (floatify x)
 		  (floatify y)
 		  0.0)			  
