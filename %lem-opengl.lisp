@@ -295,7 +295,8 @@
 	       (incf x)))))))
 
 (defun render-stuff ()
-  (text-sub::with-data-shader (uniform rebase)
+  (progn
+   ;;text-sub::with-data-shader (uniform rebase)
   ;;  (gl:clear :color-buffer-bit)
  ;;   (gl:disable :depth-test)
 
@@ -326,18 +327,70 @@
     ;;   #+nil
     (when *update-p*
       (setf *update-p* nil)
-      (dotimes (i (length *virtual-window*))
-	(let ((array (aref *virtual-window* i)))
-	  (draw-glyphs-array
-	   0
-	   (- *lines* i 1)
-	   array))))
-    
+      (cffi:with-foreign-object
+       (arr :uint8 (* 4
+		      *columns*
+		      *lines*))
+       (let ((len (length *virtual-window*)))
+	 (dotimes (i len)
+	   (let ((array (aref *virtual-window* (- len i 1))))
+	     (let ((len (length array)))
+	       (dotimes (index len)
+		 (let* ((glyph (aref array index))
+			(attributes (glyph-attributes glyph)))
+		   (let ((pair (ncurses-color-pair (mod attributes 256))))
+		     (flet ((color (r g b a)
+			      (let ((base (* 4 (+ (* index)
+						  (* i *columns*)))))
+				(setf (cffi:mem-ref arr :uint8 (+ 0 base)) r
+				      (cffi:mem-ref arr :uint8 (+ 1 base)) g
+				      (cffi:mem-ref arr :uint8 (+ 2 base)) b
+				      (cffi:mem-ref arr :uint8 (+ 3 base)) a)))
+			    (byte/255 (n)
+			      (identity n)))
+		       (color (byte/255
+			       (char-code (glyph-value glyph)))
+			      (let ((fg (car pair)))
+				(if (or
+				     (not pair)
+				     (= -1 fg))
+				    (byte/255
+				     *fg-default*) ;;FIXME :cache?
+				    (byte/255
+				     fg)))
+			      (let ((bg (cdr pair)))
+				(if (or
+				     (not pair)
+				     (= -1 bg))
+				    (byte/255
+				     *bg-default*) ;;FIXME :cache?
+				    (byte/255
+				     bg)))
+			      (byte/255
+			       (logior (if (logtest A_Underline attributes)
+					   1
+					   0)
+				       (if (logtest A_bold attributes)
+					   2
+					   0))))
+		       #+nil
+		       (vertex (floatify x)
+			       (floatify y)
+			       0.0))
+		     #+nil
+		     (incf x))))))))
+       (let* ((framebuffer (getfnc 'text-sub::text-data))
+	      (texture (glhelp::texture framebuffer)))
+	 (gl:bind-texture :texture-2d texture)
+	 (gl:tex-sub-image-2d :texture-2d 0 0 0 *columns* *lines* :rgba :unsigned-byte arr))))
+    #+nil
     (rebase -128.0 -128.0))
+  #+nil
   (gl:point-size 1.0)
 
   ;;;;what? this is to replace (gl:with-primitives :points ...body)
   ;;;; to find bug where resizing the lem window over and over causes crash
+  #+nil
   (unwind-protect (progn
 		    (gl:begin :points)
 		    (opengl-immediate::mesh-vertex-color))
@@ -356,36 +409,6 @@
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
     (gl:call-list (glhelp::handle (getfnc 'text-sub::fullscreen-quad)))))
-
-(defun draw-glyphs-array (x y array)
-  (let ((len (length array)))
-    (dotimes (index len)
-      (let* ((glyph (aref array index))
-	     (attributes (glyph-attributes glyph)))
-	(let ((pair (ncurses-color-pair (mod attributes 256))))
-	  (color (byte/255 (char-code (glyph-value glyph)))
-		 (let ((fg (car pair)))
-		   (if (or
-			(not pair)
-			(= -1 fg))
-		       (byte/255 *fg-default*) ;;FIXME :cache?
-		       (byte/255 fg)))
-		 (let ((bg (cdr pair)))
-		   (if (or
-			(not pair)
-			(= -1 bg))
-		       (byte/255 *bg-default*) ;;FIXME :cache?
-		       (byte/255 bg)))
-		 (byte/255 (logior (if (logtest A_Underline attributes)
-				       1
-				       0)
-				   (if (logtest A_bold attributes)
-				       2
-				       0))))
-	  (vertex (floatify x)
-		  (floatify y)
-		  0.0)			  
-	  (incf x))))))
 
 #+nil
 (defun plain-button (fun &optional
