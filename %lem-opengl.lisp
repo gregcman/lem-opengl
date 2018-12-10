@@ -326,9 +326,13 @@
     
     (rebase -128.0 -128.0))
   (gl:point-size 1.0)
-  
-  (gl:with-primitives :points
-    (opengl-immediate::mesh-vertex-color))
+
+  ;;;;what? this is to replace (gl:with-primitives :points ...body)
+  ;;;; to find bug where resizing the lem window over and over causes crash
+  (unwind-protect (progn
+		    (gl:begin :points)
+		    (opengl-immediate::mesh-vertex-color))
+    (gl:end))
   (text-sub::with-text-shader (uniform)
     (gl:uniform-matrix-4fv
      (uniform :pmv)
