@@ -396,7 +396,7 @@
 			  (let ((true-p (= 1 (sbit array code))))
 			    (when true-p
 			      (multiple-value-bind (name type) (window::back-value code)
-				(print (list name type))
+				;;(print (list name type))
 				(when (eq type :key)
 				  (let ((key (get-sym-from-glfw3-code name)))
 				    (if key
