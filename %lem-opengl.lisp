@@ -102,23 +102,23 @@
    (position :accessor sprite.position
 	     :initform (make-instance 'point)
 	     :initarg :position)))
-
+#+nil
 (defun closest-multiple (x n)
   (* n (round x n)))
 
 (defparameter *mouse-x* 0.0)
 (defparameter *mouse-y* 0.0)
-
+#+nil
 (defun random-point ()
   (make-instance 'point
 		 :x (* *glyph-width* (random 80))
 		 :y (* *glyph-height* (random 25))))
-
+#+nil
 (defun integer-point (x y)
   (make-instance 'point
 		 :x (* *glyph-width* x)
 		 :y (* *glyph-height* y)))
-
+#+nil
 (defun string-bounding-box (string &optional (rectangle (make-instance 'rectangle)))
   (multiple-value-bind (x y) (string-bounds string)
     (with-slots (x0 y0 x1 y1) rectangle
@@ -126,6 +126,7 @@
 	    y0 (- (* *glyph-height* y))
 	    x1 (* *glyph-width* x)
 	    y1 *glyph-height*))))
+#+nil
 (defun string-bounds (string)
   (let ((len (length string))
 	(maxx 0)
