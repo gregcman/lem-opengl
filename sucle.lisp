@@ -321,13 +321,13 @@
   (lem:move-to-virtual-line-column (lem:current-point) x))
 
 (defun parse-mouse-event-aux (state x y)
-  (parse-mouse-event (list (if state
-			       #\M
-			       #\m
-			       )
-			   0
-			   x
-			   y)))
+  (list (if state
+	    #\M
+	    #\m
+	    )
+	0
+	x
+	y))
 
 (defun parse-mouse-event
     (&optional
@@ -348,50 +348,49 @@
 	   :do (push c part)
 	   :finally (return (cons c (reverse #1#))))))
   "msg is ((or #\M #\m) mouse-button=0 x y). M = down m =up" 
-  (lambda ()
-    (when (zerop (second msg))
-      (let ((mouse-x (third msg))
-	    (mouse-y (fourth msg)))
-	(cond ((and (eql (first msg) #\M)) ;; button-1 down
-	       (find-if (lambda(o)
-			  (let ((x (lem:window-x o))
-				(w (lem:window-width o))
-				(y (lem:window-y o))
-				(h (lem:window-height o)))
-			    (or
-			     (and (< x mouse-x (+ 1 x w))
-				  (= y mouse-y)
-				  (setf *dragging-window* (list o 'y)))
-			     (and (= x mouse-x)
-				  (< y mouse-y (+ -1 y h))
-				  (setf *dragging-window* (list o 'x)))
-			     (and (< x mouse-x (+ 1 x w))
-				  (< y mouse-y (+ -1 y h))
-				  (lem:send-event
-				   (lambda ()
-				     (setf (lem:current-window) o)
-				     (move-to-cursor
-				      o
-				      (- mouse-x x 1)
-				      (- mouse-y y 1))
-				     (lem:redraw-display)))))))
-			(lem:window-list)))
-	      ((and  ;; button-1 up
-		(eql (first msg) #\m))
-	       (when (windowp (first *dragging-window*))
-		 (if (eql (second *dragging-window*) 'x)
-		     (lem:shrink-window-horizontally
-		      (- (lem:window-x (first *dragging-window*))
-			 mouse-x))
-		     (lem:shrink-window
-		      (- (lem:window-y (first *dragging-window*))
-			 mouse-y))))
-	       (when (first *dragging-window*)
-		 (setf *dragging-window*
-		       (list nil (cddr msg) *dragging-window*)))))))
-    (when *message-on-mouse-event*
-      (lem:message "mouse:~S" msg))
-    (lem:redraw-display)))
+  (when (zerop (second msg))
+    (let ((mouse-x (third msg))
+	  (mouse-y (fourth msg)))
+      (cond ((and (eql (first msg) #\M)) ;; button-1 down
+	     (find-if (lambda(o)
+			(let ((x (lem:window-x o))
+			      (w (lem:window-width o))
+			      (y (lem:window-y o))
+			      (h (lem:window-height o)))
+			  (or
+			   (and (< x mouse-x (+ 1 x w))
+				(= y mouse-y)
+				(setf *dragging-window* (list o 'y)))
+			   (and (= x mouse-x)
+				(< y mouse-y (+ -1 y h))
+				(setf *dragging-window* (list o 'x)))
+			   (and (< x mouse-x (+ 1 x w))
+				(< y mouse-y (+ -1 y h))
+				(lem:send-event
+				 (lambda ()
+				   (setf (lem:current-window) o)
+				   (move-to-cursor
+				    o
+				    (- mouse-x x 1)
+				    (- mouse-y y 1))
+				   (lem:redraw-display)))))))
+		      (lem:window-list)))
+	    ((and  ;; button-1 up
+	      (eql (first msg) #\m))
+	     (when (windowp (first *dragging-window*))
+	       (if (eql (second *dragging-window*) 'x)
+		   (lem:shrink-window-horizontally
+		    (- (lem:window-x (first *dragging-window*))
+		       mouse-x))
+		   (lem:shrink-window
+		    (- (lem:window-y (first *dragging-window*))
+		       mouse-y))))
+	     (when (first *dragging-window*)
+	       (setf *dragging-window*
+		     (list nil (cddr msg) *dragging-window*)))))))
+  (when *message-on-mouse-event*
+    (lem:message "mouse:~S" msg))
+  (lem:redraw-display))
 
 
 #+nil
@@ -439,66 +438,22 @@
    (lambda ()
      (block out
        (handler-case
-	   (block cya
-	     (text-sub::change-color-lookup
-	      ;;'text-sub::color-fun
-	      'lem-sucle::color-fun
-	      #+nil
-	      (lambda (n)
-		(values-list
-		 (print (mapcar (lambda (x) (utility::floatify x))
-				(nbutlast (aref lem.term::*colors* n))))))
-	      )
-	     (application::refresh '%lem-opengl::virtual-window)
-	     (application::refresh '%lem-opengl::event-queue)
-	     (window::set-vsync t)
-	     (loop
-		(application::getfnc '%lem-opengl::virtual-window)
-		(application::getfnc '%lem-opengl::event-queue)
-		(application:poll-app)
-		(%lem-opengl::per-frame)
-		(handler-case
-		    (progn
-		      (unless (bt:thread-alive-p editor-thread) (return-from cya))
-		      (block out
-			(loop (multiple-value-bind (event exists)
-				  (lparallel.queue:try-pop-queue %lem-opengl::*queue*)
-				(if exists
-				    (case event
-				      (:resize
-				       (setf *need-to-resize* t)))
-				    (return-from out)))))
-		      (when (and (zerop (mod *ticks* 32))
-				 *need-to-resize*)
-			(setf *need-to-resize* nil)
-			(send-event :resize))
-		      (let ((array (window::control-state-jp-or-repeat window::*control-state*)))
-			(declare (type window::mouse-keyboard-input-array array))
-			(dotimes (code 128)
-			  (let ((true-p (= 1 (sbit array code))))
-			    (when true-p
-			      (multiple-value-bind (name type) (window::back-value code)
-				;;(print (list name type))
-				(when (eq type :key)
-				  (let ((key (get-sym-from-glfw3-code name)))
-				    (if key
-					(send-event (make-key :sym key
-							      :meta window::*alt*
-							      :super window::*super*
-							      :shift window::*shift*
-							      :ctrl window::*control*))
-					(format t "~s key unimplemted" name)))))))))
-		      #+nil
-		      (let ((event))
-			
-			(if (eq event :abort)
-			    (send-abort-event editor-thread nil)
-			    ;;(send-event event)
-			    )))
-		  #+sbcl
-		  (sb-sys:interactive-interrupt (c)
-		    (declare (ignore c))
-		    (send-abort-event editor-thread t)))))
+	   (let ((out-token (list "good" "bye")))
+	     (catch out-token
+	       (text-sub::change-color-lookup
+		;;'text-sub::color-fun
+		'lem-sucle::color-fun
+		#+nil
+		(lambda (n)
+		  (values-list
+		   (print (mapcar (lambda (x) (utility::floatify x))
+				  (nbutlast (aref lem.term::*colors* n))))))
+		)
+	       (application::refresh '%lem-opengl::virtual-window)
+	       (application::refresh '%lem-opengl::event-queue)
+	       (window::set-vsync t)
+	       (loop
+		  (per-frame editor-thread out-token))))
 	 (exit-editor (c) (return-from out c)))))
    :width (floor (* %lem-opengl::*columns*
 		    %lem-opengl::*glyph-width*))
@@ -506,6 +461,66 @@
 		     %lem-opengl::*glyph-height*))
    :title "lem is an editor for Common Lisp"
    :resizable nil))
+
+(defun per-frame (editor-thread out-token)
+  (application::getfnc '%lem-opengl::virtual-window)
+  (application::getfnc '%lem-opengl::event-queue)
+  (application:poll-app)
+  (%lem-opengl::per-frame)
+  (handler-case
+      (progn
+	(unless (bt:thread-alive-p editor-thread) (throw out-token nil))
+	(block out
+	  (loop (multiple-value-bind (event exists)
+		    (lparallel.queue:try-pop-queue %lem-opengl::*queue*)
+		  (if exists
+		      (case event
+			(:resize
+			 (setf *need-to-resize* t)))
+		      (return-from out)))))
+	(when (and (zerop (mod *ticks* 32))
+		   *need-to-resize*)
+	  (setf *need-to-resize* nil)
+	  (send-event :resize))
+	(let ((array (window::control-state-jp-or-repeat window::*control-state*)))
+	  (declare (type window::mouse-keyboard-input-array array))
+	  (dotimes (code 128)
+	    (let ((true-p (= 1 (sbit array code))))
+	      (when true-p
+		(multiple-value-bind (name type) (window::back-value code)
+		  ;;(print (list name type))
+		  (case type
+		    (:key
+		     (let ((key (get-sym-from-glfw3-code name)))
+		       (if key
+			   (send-event (make-key :sym key
+						 :meta window::*alt*
+						 :super window::*super*
+						 :shift window::*shift*
+						 :ctrl window::*control*))
+			   (format t "~s key unimplemted" name))))))))))
+	
+	(send-event (lambda ()
+		      (parse-mouse-event
+		       (parse-mouse-event-aux
+			(window::skey-p
+			 (window::mouseval :left)
+			 window::*control-state*)
+			(floor window::*mouse-x*
+			       %lem-opengl::*glyph-width*)
+			(floor window::*mouse-y*
+			       %lem-opengl::*glyph-height*)))))
+	#+nil
+	(let ((event))
+	  
+	  (if (eq event :abort)
+	      (send-abort-event editor-thread nil)
+	      ;;(send-event event)
+	      )))
+    #+sbcl
+    (sb-sys:interactive-interrupt (c)
+      (declare (ignore c))
+      (send-abort-event editor-thread t))))
 
 #+nil
 (defun input-loop (editor-thread)

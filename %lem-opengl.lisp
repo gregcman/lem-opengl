@@ -177,9 +177,10 @@
 (defun init ())
 (defun app ()
   #+nil
+  (setf *mouse-x* (floatify window::*mouse-x*)
+	*mouse-y* (- window::*height* (floatify window::*mouse-y*)))
+  #+nil
   (progn
-    (setf *mouse-x* (floatify window::*mouse-x*)
-	  *mouse-y* (- window::*height* (floatify window::*mouse-y*)))
     (when (window::skey-j-p (window::keyval #\esc))
       (pop-sprite-chain-stack))
     (do-sprite-chain (sprite t) ()
