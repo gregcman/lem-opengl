@@ -325,64 +325,6 @@
 			 fgcolor
 			 bgcolor)))))
     ;;   #+nil
-    (when *update-p*
-      (setf *update-p* nil)
-      (cffi:with-foreign-object
-       (arr :uint8 (* 4
-		      *columns*
-		      *lines*))
-       (let ((len (length *virtual-window*)))
-	 (dotimes (i len)
-	   (let ((array (aref *virtual-window* (- len i 1))))
-	     (let ((len (length array)))
-	       (dotimes (index len)
-		 (let* ((glyph (aref array index))
-			(attributes (glyph-attributes glyph)))
-		   (let ((pair (ncurses-color-pair (mod attributes 256))))
-		     (flet ((color (r g b a)
-			      (let ((base (* 4 (+ (* index)
-						  (* i *columns*)))))
-				(setf (cffi:mem-ref arr :uint8 (+ 0 base)) r
-				      (cffi:mem-ref arr :uint8 (+ 1 base)) g
-				      (cffi:mem-ref arr :uint8 (+ 2 base)) b
-				      (cffi:mem-ref arr :uint8 (+ 3 base)) a)))
-			    (byte/255 (n)
-			      (identity n)))
-		       (color (byte/255
-			       (char-code (glyph-value glyph)))
-			      (let ((fg (car pair)))
-				(if (or
-				     (not pair)
-				     (= -1 fg))
-				    (byte/255
-				     *fg-default*) ;;FIXME :cache?
-				    (byte/255
-				     fg)))
-			      (let ((bg (cdr pair)))
-				(if (or
-				     (not pair)
-				     (= -1 bg))
-				    (byte/255
-				     *bg-default*) ;;FIXME :cache?
-				    (byte/255
-				     bg)))
-			      (byte/255
-			       (logior (if (logtest A_Underline attributes)
-					   1
-					   0)
-				       (if (logtest A_bold attributes)
-					   2
-					   0))))
-		       #+nil
-		       (vertex (floatify x)
-			       (floatify y)
-			       0.0))
-		     #+nil
-		     (incf x))))))))
-       (let* ((framebuffer (getfnc 'text-sub::text-data))
-	      (texture (glhelp::texture framebuffer)))
-	 (gl:bind-texture :texture-2d texture)
-	 (gl:tex-sub-image-2d :texture-2d 0 0 0 *columns* *lines* :rgba :unsigned-byte arr))))
     #+nil
     (rebase -128.0 -128.0))
   #+nil
@@ -395,6 +337,65 @@
 		    (gl:begin :points)
 		    (opengl-immediate::mesh-vertex-color))
     (gl:end))
+  (when *update-p*
+    (setf *update-p* nil)
+    (cffi:with-foreign-object
+     (arr :uint8 (* 4
+		    *columns*
+		    *lines*))
+     (let ((len (length *virtual-window*)))
+       (dotimes (i len)
+	 (let ((array (aref *virtual-window* (- len i 1))))
+	   (let ((len (length array)))
+	     (dotimes (index len)
+	       (let* ((glyph (aref array index))
+		      (attributes (glyph-attributes glyph)))
+		 (let ((pair (ncurses-color-pair (mod attributes 256))))
+		   (flet ((color (r g b a)
+			    (let ((base (* 4 (+ (* index)
+						(* i *columns*)))))
+			      (setf (cffi:mem-ref arr :uint8 (+ 0 base)) r
+				    (cffi:mem-ref arr :uint8 (+ 1 base)) g
+				    (cffi:mem-ref arr :uint8 (+ 2 base)) b
+				    (cffi:mem-ref arr :uint8 (+ 3 base)) a)))
+			  (byte/255 (n)
+			    (identity n)))
+		     (color (byte/255
+			     (char-code (glyph-value glyph)))
+			    (let ((fg (car pair)))
+			      (if (or
+				   (not pair)
+				   (= -1 fg))
+				  (byte/255
+				   *fg-default*) ;;FIXME :cache?
+				  (byte/255
+				   fg)))
+			    (let ((bg (cdr pair)))
+			      (if (or
+				   (not pair)
+				   (= -1 bg))
+				  (byte/255
+				   *bg-default*) ;;FIXME :cache?
+				  (byte/255
+				   bg)))
+			    (byte/255
+			     (logior (if (logtest A_Underline attributes)
+					 1
+					 0)
+				     (if (logtest A_bold attributes)
+					 2
+					 0))))
+		     #+nil
+		     (vertex (floatify x)
+			     (floatify y)
+			     0.0))
+		   #+nil
+		   (incf x))))))))
+     (let* ((framebuffer (getfnc 'text-sub::text-data))
+	    (texture (glhelp::texture framebuffer)))
+       (gl:bind-texture :texture-2d texture)
+       (gl:tex-sub-image-2d :texture-2d 0 0 0 *columns* *lines* :rgba :unsigned-byte arr))))
+  
   (text-sub::with-text-shader (uniform)
     (gl:uniform-matrix-4fv
      (uniform :pmv)
