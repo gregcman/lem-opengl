@@ -338,6 +338,8 @@
     (gl:end))
   (when *update-p*
     (setf *update-p* nil)
+    ;;;Copy the virtual screen to a c-array,
+    ;;;then send the c-array to an opengl texture
     (let* ((c-array-lines (+ 1 *lines*))
 	   (c-array-columns (+ 1 *columns*))
 	   (c-array-len (* 4
@@ -345,55 +347,65 @@
 			   c-array-lines)))
       (cffi:with-foreign-object
        (arr :uint8 c-array-len)
-       (dotimes (i c-array-len)
-	 (setf (cffi:mem-ref arr :uint8 i) 0))
-       (let ((len *lines*))
-	 (dotimes (i len)
-	   (let ((array (aref *virtual-window* (- len i 1))))
-	     (dotimes (index *columns*)
-	       (let* ((glyph (aref array index))
-		      (attributes (glyph-attributes glyph))
-		      (pair (ncurses-color-pair (mod attributes 256))))
-		 (flet ((color (r g b a)
-			  (let ((base (* 4 (+ (* index)
-					      (* i c-array-columns)))))
-			    (setf (cffi:mem-ref arr :uint8 (+ 0 base)) r
-				  (cffi:mem-ref arr :uint8 (+ 1 base)) g
-				  (cffi:mem-ref arr :uint8 (+ 2 base)) b
-				  (cffi:mem-ref arr :uint8 (+ 3 base)) a)))
-			(byte/255 (n)
-			  (identity n)))
-		   (color (byte/255
-			   (char-code (glyph-value glyph)))
-			  (let ((fg (car pair)))
-			    (if (or
-				 (not pair)
-				 (= -1 fg))
-				(byte/255
-				 *fg-default*) ;;FIXME :cache?
-				(byte/255
-				 fg)))
-			  (let ((bg (cdr pair)))
-			    (if (or
-				 (not pair)
-				 (= -1 bg))
-				(byte/255
-				 *bg-default*) ;;FIXME :cache?
-				(byte/255
-				 bg)))
-			  (byte/255
-			   (logior (if (logtest A_Underline attributes)
-				       1
-				       0)
-				   (if (logtest A_bold attributes)
-				       2
-				       0))))
+       (flet ((color (r g b a x y)
+		(let ((base (* 4 (+ x (* y c-array-columns)))))
+		  (setf (cffi:mem-ref arr :uint8 (+ 0 base)) r
+			(cffi:mem-ref arr :uint8 (+ 1 base)) g
+			(cffi:mem-ref arr :uint8 (+ 2 base)) b
+			(cffi:mem-ref arr :uint8 (+ 3 base)) a))))
+	 (progn
+	   (let ((foox (- c-array-columns 1))
+		 (bary (- c-array-lines 1)))
+	     (flet ((blacken (x y)
+		      (color 0 0 0 0 x y)))
+	       (blacken foox bary)
+	       (dotimes (i bary)
+		 (blacken foox i))
+	       (dotimes (i foox)
+		 (blacken i bary)))))
+	 
+	 (let ((len *lines*))
+	   (dotimes (i len)
+	     (let ((array (aref *virtual-window* (- len i 1))))
+	       (dotimes (index *columns*)
+		 (let* ((glyph (aref array index))
+			(attributes (glyph-attributes glyph))
+			(pair (ncurses-color-pair (mod attributes 256))))
+		   (flet ((byte/255 (n)
+			    (identity n)))
+		     (color (byte/255
+			     (char-code (glyph-value glyph)))
+			    (let ((fg (car pair)))
+			      (if (or
+				   (not pair)
+				   (= -1 fg))
+				  (byte/255
+				   *fg-default*) ;;FIXME :cache?
+				  (byte/255
+				   fg)))
+			    (let ((bg (cdr pair)))
+			      (if (or
+				   (not pair)
+				   (= -1 bg))
+				  (byte/255
+				   *bg-default*) ;;FIXME :cache?
+				  (byte/255
+				   bg)))
+			    (byte/255
+			     (logior (if (logtest A_Underline attributes)
+					 1
+					 0)
+				     (if (logtest A_bold attributes)
+					 2
+					 0)))
+			    index
+			    i)
+		     #+nil
+		     (vertex (floatify x)
+			     (floatify y)
+			     0.0))
 		   #+nil
-		   (vertex (floatify x)
-			   (floatify y)
-			   0.0))
-		 #+nil
-		 (incf x))))))
+		   (incf x)))))))
        (let* ((framebuffer (getfnc 'text-sub::text-data))
 	      (texture (glhelp::texture framebuffer)))
 	 (gl:bind-texture :texture-2d texture)
