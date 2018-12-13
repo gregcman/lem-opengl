@@ -8,6 +8,6 @@
 	       "%lem-opengl"
                "lem")
   :serial t
-  :components (#+win32(:file "cl-charms-pdcurseswin32")
+  :components (
                (:file "term")
                (:file "sucle")))
