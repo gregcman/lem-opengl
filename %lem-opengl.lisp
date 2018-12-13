@@ -46,26 +46,34 @@
    value
    attributes))
 
-(deftype glyph () `(unsigned-byte 10))
+(deftype glyph () `(unsigned-byte ,(+ 8 8 3)))
+(deftype glyph-attributes () `(unsigned-byte ,(+ 8 3)))
 (defun glyph-value (glyph)
-  (declare (type fixnum glyph))
+  (declare (type glyph glyph))
   (declare (optimize (speed 3)
 		     (safety 0)))
-  (code-char (logand glyph (utility::etouq (1- (expt 2 8))))))
+  (code-char (logand glyph (utility::etouq (1- (ash 1 8))))))
 (defun glyph-attributes (glyph)
-  (declare (type fixnum glyph))
+  (declare (type glyph glyph))
   (declare (optimize (speed 3)
 		     (safety 0)))
-  (ash (logand glyph (utility::etouq (lognot (1- (expt 2 8))))) -8))
+  (ash glyph -8))
+
+(defun prepare-attributes-for-glyph (attributes)
+  (declare (type glyph-attributes attributes))
+  (declare (optimize (speed 3)
+		     (safety 0)))
+  (ash attributes 8))
 
 (defun gen-glyph (value attributes)
   (declare (optimize (speed 3)
 		     (safety 0)))
+  (declare (type glyph-attributes attributes))
   #+nil
   (make-glyph :value value
 	      :attributes attributes)
   (logior (char-code value)
-	  (the fixnum (ash (the fixnum attributes) 8))))
+	  (ash attributes 8)))
 
 #+nil
 (progn
@@ -240,13 +248,14 @@
   
 
   (glhelp:set-render-area 0 0 window:*width* window:*height*)
-  (gl:clear-color 0.0 0.0 0.0 0.0)
+  ;;(gl:clear-color 0.0 0.0 0.0 0.0)
   ;;(gl:clear :color-buffer-bit)
   (gl:polygon-mode :front-and-back :fill)
   (gl:disable :cull-face)
   (gl:disable :blend)
 
-  (render-stuff))
+  (render-stuff)
+  )
 #+nil
 (defun update-bounds (sprite)
   (with-slots (bounding-box position absolute-rectangle)
@@ -370,8 +379,12 @@
     (setf *update-p* nil)
     ;;;Copy the virtual screen to a c-array,
     ;;;then send the c-array to an opengl texture
-    (let* ((c-array-lines (+ 1 *lines*))
-	   (c-array-columns (+ 1 *columns*))
+    (let* ((c-array-lines
+	    (min text-sub::*text-data-height* ;do not send data larger than text data
+		 (+ 1 *lines*)))              ;width or height
+	   (c-array-columns
+	    (min text-sub::*text-data-width*
+		 (+ 1 *columns*)))
 	   (c-array-len (* 4
 			   c-array-columns
 			   c-array-lines)))
@@ -421,6 +434,7 @@
 				   *bg-default*) ;;FIXME :cache?
 				  (byte/255
 				   bg)))))
+		       ;;#+nil
 		       (when (logtest A_reverse attributes)
 			 (rotatef realfg realbg))
 		       (color (byte/255
@@ -428,12 +442,10 @@
 			      realfg
 			      realbg
 			      (byte/255
-			       (logior (if (logtest A_Underline attributes)
-					   1
-					   0)
-				       (if (logtest A_bold attributes)
-					   2
-					   0)))
+			       (text-sub::char-attribute
+				(logtest A_Underline attributes)
+				(logtest A_bold attributes)
+				t))
 			      index
 			      i))
 		     #+nil
@@ -442,14 +454,13 @@
 			     0.0))
 		   #+nil
 		   (incf x)))))))
-       (let* ((framebuffer (getfnc 'text-sub::text-data))
-	      (texture (glhelp::texture framebuffer)))
+       ;;;;write the data out to the texture
+       (let ((texture (text-sub::get-text-texture)))
 	 (gl:bind-texture :texture-2d texture)
 	 (gl:tex-sub-image-2d :texture-2d 0 0 0
 			      c-array-columns
 			      c-array-lines
 			      :rgba :unsigned-byte arr)))))
-  
   (text-sub::with-text-shader (uniform)
     (gl:uniform-matrix-4fv
      (uniform :pmv)
@@ -457,7 +468,7 @@
      nil)   
     (glhelp::bind-default-framebuffer)
     (glhelp:set-render-area 0 0 (getfnc 'application::w) (getfnc 'application::h))
-    #+nil
+    ;#+nil
     (progn
       (gl:enable :blend)
       (gl:blend-func :src-alpha :one-minus-src-alpha))
@@ -947,8 +958,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
     (let ((grid (win-data win))
 	  (xwin (win-x win))
 	  (ywin (win-y win))
-	  ;;(cursor-x (win-cursor-x win))
-	  ;;(cursor-y (win-cursor-y win))
+	  (cursor-x (win-cursor-x win))
+	  (cursor-y (win-cursor-y win))
 	  (columns (length (aref *virtual-window* 0)))
 	  (lines (length *virtual-window*)))
       (dotimes (y (win-lines win))
@@ -958,11 +969,13 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 		  (ydest (+ ywin y)))
 	      (when (and (> columns xdest -1)
 			 (> lines ydest -1))
+
 		#+nil
-		(if (or (= cursor-x x)
-			(= y cursor-y)
-			 )
-		    (setf glyph (logior glyph A_Reverse))) 
+		(when (and (= cursor-x xdest)
+			   (= cursor-y ydest))
+		  (setf glyph
+			(logior glyph
+				(prepare-attributes-for-glyph a_reverse))))
 		(set-virtual-window xdest
 				    ydest
 				    glyph

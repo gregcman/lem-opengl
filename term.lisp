@@ -372,6 +372,10 @@
 (defvar *pair-counter* 0)
 (defvar *color-pair-table* (make-hash-table :test 'equal))
 
+(defun reset-color-pair ()
+  (clrhash *color-pair-table*)
+  (setf *pair-counter* 0))
+
 (defun init-pair (pair-color)
   (incf *pair-counter*)
   ;;(charms/ll:init-pair *pair-counter* (car pair-color) (cdr pair-color))

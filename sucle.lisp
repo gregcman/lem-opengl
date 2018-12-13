@@ -279,9 +279,7 @@
         (or (lem::attribute-%internal-value attribute)
             (let* ((foreground (attribute-foreground attribute))
                    (background (attribute-background attribute))
-                   (bits (logior (if (or cursorp (lem::attribute-reverse-p attribute))
-                                     (lem.term:get-color-pair background foreground)
-                                     (lem.term:get-color-pair foreground background))
+                   (bits (logior (lem.term:get-color-pair foreground background)
                                  0
                                  (if (lem::attribute-bold-p attribute)
                                      ;;charms/ll:a_bold
@@ -290,7 +288,10 @@
                                  (if (lem::attribute-underline-p attribute)
                                      ;;charms/ll:a_underline
 				     %lem-opengl::a_underline
-                                     0))))
+                                     0)
+				 (if (or cursorp (lem::attribute-reverse-p attribute))
+				     %lem-opengl::a_reverse
+				     0))))
               (setf (lem::attribute-%internal-value attribute) bits)
               bits)))))
 #+nil
@@ -429,24 +430,26 @@
   (application::main
    (lambda ()
      (block out
-       (handler-case
-	   (let ((out-token (list "good" "bye")))
-	     (catch out-token
-	       (text-sub::change-color-lookup
-		;;'text-sub::color-fun
-		'lem-sucle::color-fun
-		#+nil
-		(lambda (n)
-		  (values-list
-		   (print (mapcar (lambda (x) (utility::floatify x))
-				  (nbutlast (aref lem.term::*colors* n))))))
-		)
-	       (application::refresh '%lem-opengl::virtual-window)
-	       (application::refresh '%lem-opengl::event-queue)
-	       (window::set-vsync t)
-	       (loop
-		  (per-frame editor-thread out-token))))
-	 (exit-editor (c) (return-from out c)))))
+       (let ((text-sub::*text-data-what-type* :texture-2d))
+	 (handler-case
+	     (let ((out-token (list "good" "bye")))
+	       (catch out-token
+		 (text-sub::change-color-lookup
+		  ;;'text-sub::color-fun
+		  'lem-sucle::color-fun
+		  #+nil
+		  (lambda (n)
+		    (values-list
+		     (print (mapcar (lambda (x) (utility::floatify x))
+				    (nbutlast (aref lem.term::*colors* n))))))
+		  )
+		 (application::refresh '%lem-opengl::virtual-window)
+		 (application::refresh '%lem-opengl::event-queue)
+		 (window::set-vsync t)
+		 (lem.term::reset-color-pair)
+		 (loop
+		    (per-frame editor-thread out-token))))
+	   (exit-editor (c) (return-from out c))))))
    :width (floor (* %lem-opengl::*columns*
 		    %lem-opengl::*glyph-width*))
    :height (floor (* %lem-opengl::*lines*
