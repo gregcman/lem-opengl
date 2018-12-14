@@ -1,27 +1,5 @@
 (in-package :%lem-opengl)
 
-(defparameter *glyph-height* 16.0)
-(defparameter *glyph-width* 8.0)
-
-(defparameter *mouse-x* 0.0)
-(defparameter *mouse-y* 0.0)
-
-(defparameter *last-scroll* 0)
-(defparameter *scroll-difference* 0)
-(defun per-frame ()
-  (let ((newscroll (floor window::*scroll-y*)))
-    (setf *scroll-difference* (- newscroll *last-scroll*))
-    (setf *last-scroll* newscroll))
-
-  (glhelp:set-render-area 0 0 window:*width* window:*height*)
-  ;;(gl:clear-color 0.0 0.0 0.0 0.0)
-  ;;(gl:clear :color-buffer-bit)
-  (gl:polygon-mode :front-and-back :fill)
-  (gl:disable :cull-face)
-  (gl:disable :blend)
-
-  (render-stuff)
-  )
 
 (defun render-stuff ()
   #+nil
@@ -139,15 +117,3 @@
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
     (glhelp::slow-draw (getfnc 'text-sub::fullscreen-quad))))
-
-(defparameter *queue* nil)
-
-(deflazy event-queue ()
-  (setf *queue* (lparallel.queue:make-queue)))
-
-(deflazy virtual-window ((w application::w) (h application::h) (event-queue event-queue))
-  (lparallel.queue:push-queue :resize event-queue)
-  (setf *columns* (floor w *glyph-width*)
-	*lines* (floor h *glyph-height*))
-  (with-virtual-window-lock
-    (setf *virtual-window* (make-virtual-window))))
