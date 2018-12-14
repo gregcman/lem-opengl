@@ -100,38 +100,6 @@
 
   (render-stuff)
   )
-#+nil
-(progn
-  (deflazy flat-shader-source ()
-    (glslgen:ashader
-     :vs
-     (glslgen2::make-shader-stage
-      :out '((value-out "vec4"))
-      :in '((position "vec4")
-	    (value "vec4")
-	    (pmv "mat4"))
-      :program
-      '(defun "main" void ()
-	(= "gl_Position" (* pmv position))
-	(= value-out value)))
-     :frag
-     (glslgen2::make-shader-stage
-      :in '((value "vec4"))
-      :program
-      '(defun "main" void ()
-	(=
-	 :gl-frag-color
-	 value
-	 )))
-     :attributes
-     '((position . 0) 
-       (value . 3))
-     :varyings
-     '((value-out . value))
-     :uniforms
-     '((:pmv (:vertex-shader pmv)))))
-  (deflazy flat-shader (flat-shader-source gl-context)
-    (glhelp::create-gl-program flat-shader-source)))
 
 (defun render-stuff ()
   #+nil

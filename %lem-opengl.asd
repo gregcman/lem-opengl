@@ -6,9 +6,7 @@
 	       #:opengl-immediate
 	       #:image-utility
 	       #:character-modifier-bits
-	       #:uncommon-lisp
-	       #:quads
-	       #:point)
+	       #:uncommon-lisp)
   :serial t
   :components 
   ((:file "%lem-opengl")))
