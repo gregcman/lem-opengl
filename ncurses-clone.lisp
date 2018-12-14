@@ -1,6 +1,3 @@
-(defpackage #:%lem-opengl
-  (:use #:cl #:utility #:application)
-  (:export #:start))
 (in-package :%lem-opengl)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

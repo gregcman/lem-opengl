@@ -4,10 +4,19 @@
 	       "control"
 	       "lparallel"
                "trivial-clipboard"
-               #+(or (and ccl unix) (and lispworks unix))"lem-setlocale"
-	       "%lem-opengl"
-               "lem")
+               ;;#+(or (and ccl unix) (and lispworks unix))"lem-setlocale"
+               "lem"
+
+	       #:application
+	       #:utility
+	       #:text-subsystem
+	       ;;#:opengl-immediate
+	       #:character-modifier-bits
+	       #:uncommon-lisp)
   :serial t
-  :components (
+  :components ((:file "package")
+	       (:file "ncurses-clone")
+	       (:file "%lem-opengl")
                (:file "term")
+	       (:file "keys")
                (:file "sucle")))
