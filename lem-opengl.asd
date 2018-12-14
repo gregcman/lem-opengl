@@ -16,7 +16,6 @@
   :serial t
   :components ((:file "package")
 	       (:file "ncurses-clone")
-	       (:file "%lem-opengl")
                (:file "term")
 	       (:file "keys")
 	       (:file "impl")
