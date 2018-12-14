@@ -52,13 +52,13 @@
 
 (defmethod lem-if:display-width ((implementation sucle))
   (max 5
-       %lem-opengl::*columns*
+       ncurses-clone::*columns*
        ;;charms/ll:*cols*
        ))
 
 (defmethod lem-if:display-height ((implementation sucle))
   (max 3
-       %lem-opengl::*lines*
+       ncurses-clone::*lines*
        ;;charms/ll:*lines*
        ))
 
@@ -68,10 +68,10 @@
            (declare (ignore main-screen))
            (let ((win
 		  (;;charms/ll:newwin
-		   %lem-opengl::ncurses-newwin
+		   ncurses-clone::ncurses-newwin
 		   nlines ncols begin-y begin-x)))
 	     (when use-modeline (;;charms/ll:keypad
-				 %lem-opengl::ncurses-keypad
+				 ncurses-clone::ncurses-keypad
 				 win 1))
              ;; (when main-screen
              ;;   (charms/ll:idlok win 1)
@@ -96,22 +96,22 @@
 (defmethod lem-if:delete-view ((implementation sucle) view)
   (with-view-lock view
     (;;charms/ll:delwin
-     %lem-opengl::ncurses-delwin
+     ncurses-clone::ncurses-delwin
      (ncurses-view-scrwin view))
     (when (ncurses-view-modeline-scrwin view)
       (;;charms/ll:delwin
-       %lem-opengl::ncurses-delwin
+       ncurses-clone::ncurses-delwin
        (ncurses-view-modeline-scrwin view)))))
 
 (defmethod lem-if:clear ((implementation sucle) view)
   ;;;https://linux.die.net/man/3/clearok
   (with-view-lock view
     (;;charms/ll:clearok
-     %lem-opengl::ncurses-clearok
+     ncurses-clone::ncurses-clearok
      (ncurses-view-scrwin view) 1)
     (when (ncurses-view-modeline-scrwin view)
       (;;charms/ll:clearok
-       %lem-opengl::ncurses-clearok
+       ncurses-clone::ncurses-clearok
        (ncurses-view-modeline-scrwin view) 1))))
 
 (defmethod lem-if:set-view-size ((implementation sucle) view width height)
@@ -119,16 +119,16 @@
     (setf (ncurses-view-width view) width)
     (setf (ncurses-view-height view) height)
     (;;charms/ll:wresize
-     %lem-opengl::ncurses-wresize
+     ncurses-clone::ncurses-wresize
      (ncurses-view-scrwin view) height width)
     (when (ncurses-view-modeline-scrwin view)
       (;;charms/ll:mvwin
-       %lem-opengl::ncurses-mvwin
+       ncurses-clone::ncurses-mvwin
        (ncurses-view-modeline-scrwin view)
        (+ (ncurses-view-y view) height)
        (ncurses-view-x view))
       (;;charms/ll:wresize
-       %lem-opengl::ncurses-wresize
+       ncurses-clone::ncurses-wresize
        (ncurses-view-modeline-scrwin view)
        (lem:minibuffer-window-height)
        width))))
@@ -138,11 +138,11 @@
     (setf (ncurses-view-x view) x)
     (setf (ncurses-view-y view) y)
     (;;charms/ll:mvwin
-     %lem-opengl::ncurses-mvwin
+     ncurses-clone::ncurses-mvwin
      (ncurses-view-scrwin view) y x)
     (when (ncurses-view-modeline-scrwin view)
       (;;charms/ll:mvwin
-       %lem-opengl::ncurses-mvwin
+       ncurses-clone::ncurses-mvwin
        (ncurses-view-modeline-scrwin view)
        (+ y (ncurses-view-height view))
        x))))
@@ -159,14 +159,14 @@
                                  0
                                  (if (lem::attribute-bold-p attribute)
                                      ;;charms/ll:a_bold
-				     %lem-opengl::a_bold
+				     ncurses-clone::a_bold
                                      0)
                                  (if (lem::attribute-underline-p attribute)
                                      ;;charms/ll:a_underline
-				     %lem-opengl::a_underline
+				     ncurses-clone::a_underline
                                      0)
 				 (if (or cursorp (lem::attribute-reverse-p attribute))
-				     %lem-opengl::a_reverse
+				     ncurses-clone::a_reverse
 				     0))))
               (setf (lem::attribute-%internal-value attribute) bits)
               bits)))))
@@ -175,46 +175,46 @@
   (with-view-lock view
     (let ((attr (attribute-to-bits attribute)))
       (;;charms/ll:wattron
-       %lem-opengl::ncurses-wattron
+       ncurses-clone::ncurses-wattron
        (ncurses-view-scrwin view) attr)
       ;;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
       (;;charms/ll:mvwaddstr
-       %lem-opengl::ncurses-mvwaddstr
+       ncurses-clone::ncurses-mvwaddstr
        (ncurses-view-scrwin view) y x string)
       ;;(charms/ll:scrollok (ncurses-view-scrwin view) 1)
       (;;charms/ll:wattroff
-       %lem-opengl::ncurses-wattroff
+       ncurses-clone::ncurses-wattroff
        (ncurses-view-scrwin view) attr))))
 
 (defmethod lem-if:print-modeline ((implementation sucle) view x y string attribute)
   (with-view-lock view
     (let ((attr (attribute-to-bits attribute)))
       (;;charms/ll:wattron
-       %lem-opengl::ncurses-wattron
+       ncurses-clone::ncurses-wattron
        (ncurses-view-modeline-scrwin view) attr)
       (;;charms/ll:mvwaddstr
-       %lem-opengl::ncurses-mvwaddstr
+       ncurses-clone::ncurses-mvwaddstr
        (ncurses-view-modeline-scrwin view) y x string)
       (;;charms/ll:wattroff
-       %lem-opengl::ncurses-wattroff
+       ncurses-clone::ncurses-wattroff
        (ncurses-view-modeline-scrwin view) attr))))
 
 (defmethod lem-if:clear-eol ((implementation sucle) view x y)
   (with-view-lock view
     (;;charms/ll:wmove
-     %lem-opengl::ncurses-wmove
+     ncurses-clone::ncurses-wmove
      (ncurses-view-scrwin view) y x)
     (;;charms/ll:wclrtoeol
-     %lem-opengl::ncurses-wclrtoeol
+     ncurses-clone::ncurses-wclrtoeol
      (ncurses-view-scrwin view))))
 
 (defmethod lem-if:clear-eob ((implementation sucle) view x y)
   (with-view-lock view
     (;;charms/ll:wmove
-     %lem-opengl::ncurses-wmove
+     ncurses-clone::ncurses-wmove
      (ncurses-view-scrwin view) y x)
     (;;charms/ll:wclrtobot
-     %lem-opengl::ncurses-wclrtobot
+     ncurses-clone::ncurses-wclrtobot
      (ncurses-view-scrwin view))))
 
 ;;(defparameter *no* *standard-output*)
@@ -224,38 +224,38 @@
     #+nil ;;;FIXME
     (let ((attr (attribute-to-bits 'modeline)))
       (;;charms/ll:attron
-       %lem-opengl::ncurses-attron
+       ncurses-clone::ncurses-attron
        attr)
       #+nil ;;FIXME:: disabling 
       (when (and (ncurses-view-modeline-scrwin view)
 		 (< 0 (ncurses-view-x view)))
 	(;;charms/ll:move
-	 %lem-opengl::ncurses-move
+	 ncurses-clone::ncurses-move
 	 (ncurses-view-y view)
 	 (1- (ncurses-view-x view)))
 	(;;charms/ll:vline
-	 %lem-opengl::ncurses-vline
+	 ncurses-clone::ncurses-vline
 	 (char-code #\space)
 	 (1+ (ncurses-view-height view))))
       (;;charms/ll:attroff
-       %lem-opengl::ncurses-attroff
+       ncurses-clone::ncurses-attroff
        attr)
       (;;charms/ll:wnoutrefresh
-       %lem-opengl::ncurses-wnoutrefresh
+       ncurses-clone::ncurses-wnoutrefresh
        ;;charms/ll:*stdscr*
-       %lem-opengl::*std-scr*))
+       ncurses-clone::*std-scr*))
     (when (ncurses-view-modeline-scrwin view)
       (;;charms/ll:wnoutrefresh
-       %lem-opengl::ncurses-wnoutrefresh
+       ncurses-clone::ncurses-wnoutrefresh
        (ncurses-view-modeline-scrwin view))
-      ;;   (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
+      ;;   (ncurses-clone::print-virtual-window ncurses-clone::*virtual-window* *no*)
       )
     
     (;;charms/ll:wnoutrefresh
-     %lem-opengl::ncurses-wnoutrefresh
+     ncurses-clone::ncurses-wnoutrefresh
      (ncurses-view-scrwin view)))
 
-  ;;  (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
+  ;;  (ncurses-clone::print-virtual-window ncurses-clone::*virtual-window* *no*)
   )
 
 (defmethod lem-if:update-display ((implementation sucle))
@@ -266,26 +266,26 @@
 	     (lem:current-window)
 	     lem::*cursor-x* lem::*cursor-y*)
 	    (;;charms/ll:curs-set
-	     %lem-opengl::ncurses-curs-set
+	     ncurses-clone::ncurses-curs-set
 	     0)
 	    (progn
 	      (;;charms/ll:curs-set
-	       %lem-opengl::ncurses-curs-set
+	       ncurses-clone::ncurses-curs-set
 	       1)
 	      (;;charms/ll:wmove
-	       %lem-opengl::ncurses-wmove
+	       ncurses-clone::ncurses-wmove
 	       scrwin lem::*cursor-y* lem::*cursor-x*)))
 	;;FIXME
 	(;;charms/ll:wnoutrefresh
-	 %lem-opengl::ncurses-wnoutrefresh
+	 ncurses-clone::ncurses-wnoutrefresh
 	 scrwin)
 	(;;charms/ll:doupdate
-	 %lem-opengl::ncurses-doupdate)))))
+	 ncurses-clone::ncurses-doupdate)))))
 
 (defmethod lem-if:scroll ((implementation sucle) view n)
   (with-view-lock view
     (;;charms/ll:wscrl
-     %lem-opengl::ncurses-wscrl
+     ncurses-clone::ncurses-wscrl
      (ncurses-view-scrwin view)
      n)))
 

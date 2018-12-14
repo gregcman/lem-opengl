@@ -25,7 +25,7 @@
 (defun get-mouse-mode ()
   *mouse-mode*)
 (defun enable-mouse ()
-  (setf %lem-opengl::*mouse-enabled-p* t)
+  (setf ncurses-clone::*mouse-enabled-p* t)
   #+nil
   (progn
     (setf *mouse-mode* 1)
@@ -33,7 +33,7 @@
     (charms/ll:mousemask (logior charms/ll:all_mouse_events
 				 charms/ll:report_mouse_position))))
 (defun disable-mouse ()
-  (setf %lem-opengl::*mouse-enabled-p* nil)
+  (setf ncurses-clone::*mouse-enabled-p* nil)
   #+nil
   (progn
     (setf *mouse-mode* 0)
@@ -379,10 +379,10 @@
 (defun init-pair (pair-color)
   (incf *pair-counter*)
   ;;(charms/ll:init-pair *pair-counter* (car pair-color) (cdr pair-color))
-  (%lem-opengl::ncurses-init-pair *pair-counter* (car pair-color) (cdr pair-color))
+  (ncurses-clone::ncurses-init-pair *pair-counter* (car pair-color) (cdr pair-color))
   (setf (gethash pair-color *color-pair-table*)
 	*pair-counter* ;;FIXME wat
-	;;(%lem-opengl::ncurses-color-pair *pair-counter*)
+	;;(ncurses-clone::ncurses-color-pair *pair-counter*)
         ;;(charms/ll:color-pair *pair-counter*)
 	)
   ;;FIXME:: return color-pair?
@@ -412,7 +412,7 @@
               (cffi:mem-ref b :short))))))
 
 (defun get-default-colors ()
-  (%lem-opengl::ncurses-pair-content 0)
+  (ncurses-clone::ncurses-pair-content 0)
   #+nil
   (cffi:with-foreign-pointer (f (cffi:foreign-type-size '(:pointer :short)))
     (cffi:with-foreign-pointer (b (cffi:foreign-type-size '(:pointer :short)))
@@ -424,7 +424,7 @@
   ;;;;-1 for values mean defaults.
   (let ((fg-color (if foreground (get-color foreground) -1))
         (bg-color (if background (get-color background) -1)))
-    (%lem-opengl::ncurses-assume-default-color fg-color bg-color)
+    (ncurses-clone::ncurses-assume-default-color fg-color bg-color)
     #+nil
     (charms/ll:assume-default-colors fg-color
                                      bg-color)))
@@ -433,8 +433,8 @@
   (multiple-value-bind (fg found) (get-color name)
     (cond (found
 	   (;;charms/ll:assume-default-colors
-	    %lem-opengl::ncurses-assume-default-color
-	    fg %lem-opengl::*bg-default*)
+	    ncurses-clone::ncurses-assume-default-color
+	    fg ncurses-clone::*bg-default*)
 	   t)
 	  (t
 	   (error "Undefined color: ~A" name)))))
@@ -443,8 +443,8 @@
   (multiple-value-bind (bg found) (get-color name)
     (cond (found
 	   (;;charms/ll:assume-default-colors
-	    %lem-opengl::ncurses-assume-default-color
-	    %lem-opengl::*fg-default* bg)
+	    ncurses-clone::ncurses-assume-default-color
+	    ncurses-clone::*fg-default* bg)
 	   t)
 	  (t
 	   (error "Undefined color: ~A" name)))))

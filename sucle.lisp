@@ -13,16 +13,16 @@
   (setf *queue* (lparallel.queue:make-queue)))
 (application::deflazy virtual-window ((w application::w) (h application::h) (event-queue event-queue))
   (lparallel.queue:push-queue :resize event-queue)
-  (setf %lem-opengl::*columns* (floor w *glyph-width*)
-	%lem-opengl::*lines* (floor h *glyph-height*))
-  (%lem-opengl::with-virtual-window-lock
-    (setf %lem-opengl::*virtual-window*
-	  (%lem-opengl::make-virtual-window))))
+  (setf ncurses-clone::*columns* (floor w *glyph-width*)
+	ncurses-clone::*lines* (floor h *glyph-height*))
+  (ncurses-clone::with-virtual-window-lock
+    (setf ncurses-clone::*virtual-window*
+	  (ncurses-clone::make-virtual-window))))
 
 (defparameter *saved-session* nil)
 (defun input-loop (editor-thread)
-  (setf %lem-opengl::*columns* 80
-	%lem-opengl::*lines* 25)
+  (setf ncurses-clone::*columns* 80
+	ncurses-clone::*lines* 25)
   (setf application::*main-subthread-p* nil)
   (application::main
    (lambda ()
@@ -34,9 +34,9 @@
 		 (loop
 		    (per-frame editor-thread out-token))))
 	   (exit-editor (c) (return-from out c))))))
-   :width (floor (* %lem-opengl::*columns*
+   :width (floor (* ncurses-clone::*columns*
 		    *glyph-width*))
-   :height (floor (* %lem-opengl::*lines*
+   :height (floor (* ncurses-clone::*lines*
 		     *glyph-height*))
    :title "lem is an editor for Common Lisp"
    :resizable nil))
@@ -169,10 +169,10 @@
                     (lem:grow-window-horizontally vx)
                     ;; workaround for display update problem (incomplete)
 		    #+nil ;;FIXME
-                    (%lem-opengl::ncurses-re
+                    (ncurses-clone::ncurses-re
 		     ;;force-refresh-display ;;charms/ll:*cols*
 		     (- ;;charms/ll:*lines*
-		      %lem-opengl::*lines*
+		      ncurses-clone::*lines*
 		      1
 		      ))
                     (lem:redraw-display))))
@@ -257,16 +257,16 @@
 		    (gl:begin :points)
 		    (opengl-immediate::mesh-vertex-color))
     (gl:end))
-  (when %lem-opengl::*update-p*
-    (setf %lem-opengl::*update-p* nil)
+  (when ncurses-clone::*update-p*
+    (setf ncurses-clone::*update-p* nil)
     ;;;Copy the virtual screen to a c-array,
     ;;;then send the c-array to an opengl texture
     (let* ((c-array-lines
 	    (min text-sub::*text-data-height* ;do not send data larger than text data
-		 (+ 1 %lem-opengl::*lines*)))              ;width or height
+		 (+ 1 ncurses-clone::*lines*)))              ;width or height
 	   (c-array-columns
 	    (min text-sub::*text-data-width*
-		 (+ 1 %lem-opengl::*columns*)))
+		 (+ 1 ncurses-clone::*columns*)))
 	   (c-array-len (* 4
 			   c-array-columns
 			   c-array-lines)))
@@ -289,13 +289,13 @@
 	       (dotimes (i foox)
 		 (blacken i bary)))))
 	 
-	 (let ((len %lem-opengl::*lines*))
+	 (let ((len ncurses-clone::*lines*))
 	   (dotimes (i len)
-	     (let ((array (aref %lem-opengl::*virtual-window* (- len i 1))))
-	       (dotimes (index %lem-opengl::*columns*)
+	     (let ((array (aref ncurses-clone::*virtual-window* (- len i 1))))
+	       (dotimes (index ncurses-clone::*columns*)
 		 (let* ((glyph (aref array index))
-			(attributes (%lem-opengl::glyph-attributes glyph))
-			(pair (%lem-opengl::ncurses-color-pair (mod attributes 256))))
+			(attributes (ncurses-clone::glyph-attributes glyph))
+			(pair (ncurses-clone::ncurses-color-pair (mod attributes 256))))
 		   (flet ((byte/255 (n)
 			    (identity n)))
 		     (let ((realfg
@@ -304,7 +304,7 @@
 				   (not pair)
 				   (= -1 fg))
 				  (byte/255
-				   %lem-opengl::*fg-default*) ;;FIXME :cache?
+				   ncurses-clone::*fg-default*) ;;FIXME :cache?
 				  (byte/255
 				   fg))))
 			   (realbg
@@ -313,20 +313,20 @@
 				   (not pair)
 				   (= -1 bg))
 				  (byte/255
-				   %lem-opengl::*bg-default*) ;;FIXME :cache?
+				   ncurses-clone::*bg-default*) ;;FIXME :cache?
 				  (byte/255
 				   bg)))))
 		       ;;#+nil
-		       (when (logtest %lem-opengl::A_reverse attributes)
+		       (when (logtest ncurses-clone::A_reverse attributes)
 			 (rotatef realfg realbg))
 		       (color (byte/255
-			       (char-code (%lem-opengl::glyph-value glyph)))
+			       (char-code (ncurses-clone::glyph-value glyph)))
 			      realfg
 			      realbg
 			      (byte/255
 			       (text-sub::char-attribute
-				(logtest %lem-opengl::A_Underline attributes)
-				(logtest %lem-opengl::A_bold attributes)
+				(logtest ncurses-clone::A_Underline attributes)
+				(logtest ncurses-clone::A_bold attributes)
 				t))
 			      index
 			      i))

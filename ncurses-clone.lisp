@@ -1,4 +1,4 @@
-(in-package :%lem-opengl)
+(in-package :ncurses-clone)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;Attributes
@@ -16,6 +16,15 @@
   #b10000000000
   )
 
+;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
+#+nil "The other is to set the current-highlight value. This is logical-or'ed with any highlight you specify the first way. You do this with the functions attron(), attroff(), and attrset(); see the manual pages for details. Color is a special kind of highlight. The package actually thinks in terms of color pairs, combinations of foreground and background colors. The sample code above sets up eight color pairs, all of the guaranteed-available colors on black. Note that each color pair is, in effect, given the name of its foreground color. Any other range of eight non-conflicting values could have been used as the first arguments of the init_pair() values."
+(defparameter *current-attributes* 0)
+(defun ncurses-attron (n)
+  (setf *current-attributes*
+	(logior *current-attributes* n)))
+(defun ncurses-attroff (n)
+  (setf *current-attributes*
+	(logand *current-attributes* (lognot n))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;Glyphs
@@ -335,6 +344,10 @@
     (loop :for i :from x :below (win-cols win)
        :do (add-char i y #\Space win)))
   win)
+(defun ncurses-clrtoeol ()
+  (let ((win *win*))
+    (ncurses-wclrtoeol win)
+    win))
 (defun ncurses-wclrtobot (&optional (win *win*))
   "The clrtobot() and wclrtobot() routines erase from the cursor to the end of screen. That is, they erase all lines below the cursor in the window. Also, the current line to the right of the cursor, inclusive, is erased. https://www.mkssoftware.com/docs/man3/curs_clear.3.asp"
   (ncurses-wclrtoeol win)
@@ -407,16 +420,6 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 			     *current-attributes*))))
   win)
 
-;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
-#+nil "The other is to set the current-highlight value. This is logical-or'ed with any highlight you specify the first way. You do this with the functions attron(), attroff(), and attrset(); see the manual pages for details. Color is a special kind of highlight. The package actually thinks in terms of color pairs, combinations of foreground and background colors. The sample code above sets up eight color pairs, all of the guaranteed-available colors on black. Note that each color pair is, in effect, given the name of its foreground color. Any other range of eight non-conflicting values could have been used as the first arguments of the init_pair() values."
-(defparameter *current-attributes* 0)
-(defun ncurses-attron (n)
-  (setf *current-attributes*
-	(logior *current-attributes* n)))
-(defun ncurses-attroff (n)
-  (setf *current-attributes*
-	(logand *current-attributes* (lognot n))))
-
 (defun char-control (char)
   ;;FIXME: not portable common lisp, requires ASCII
   (let ((value (char-code char)))
@@ -446,8 +449,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
     (let ((grid (win-data win))
 	  (xwin (win-x win))
 	  (ywin (win-y win))
-	  (cursor-x (win-cursor-x win))
-	  (cursor-y (win-cursor-y win))
+	  ;;(cursor-x (win-cursor-x win))
+	  ;;(cursor-y (win-cursor-y win))
 	  (columns (length (aref *virtual-window* 0)))
 	  (lines (length *virtual-window*)))
       (dotimes (y (win-lines win))
