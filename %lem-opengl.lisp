@@ -1,45 +1,13 @@
 (defpackage #:%lem-opengl
-  (:use #:cl #:utility #:application #:opengl-immediate
-	#:sprite-chain #:point #:rectangle)
+  (:use #:cl #:utility #:application)
   (:export #:start))
 (in-package :%lem-opengl)
-
-(defparameter *ticks* 0)
-(defparameter *saved-session* nil)
-(defun per-frame ()
-  (on-session-change *saved-session*
-    (init))
-  (incf *ticks*)
-  (app))
 
 (defparameter *glyph-height* 16.0)
 (defparameter *glyph-width* 8.0)
 
 (defparameter *columns* 80)
 (defparameter *lines* 25)
-
-;;(defparameter *app* nil)
-#+nil
-(defun start ()
-  (application:main
-   (lambda ()
-     (loop
-	(application:poll-app)
-					;(if *app*)
-	;;(testbed::per-frame)
-	(progn
-	  ;;#+nil
-	  (per-frame)
-	  #+nil
-	  (when (window:skey-j-p (window::keyval #\e))
-	    (window::toggle-mouse-capture)))
-	#+nil
-	(when (window:skey-j-p (window::keyval #\h))
-	  (toggle *app*))))
-   :width (floor (* *columns* *glyph-width*))
-   :height (floor (* *lines* *glyph-height*))
-   :title ""))
-
 #+nil
 (struct-to-clos:struct->class
  (defstruct glyph
@@ -112,140 +80,16 @@
 	*lines* (floor h *glyph-height*))
   (with-virtual-window-lock
     (setf *virtual-window* (make-virtual-window))))
-#+nil
-(defclass sprite ()
-  ((bounding-box :accessor sprite.bounding-box
-		 :initform (make-instance 'rectangle
-					  :x0 -0.25 :y0 -0.25
-					  :x1 0.25 :y1 0.25)
-		 :initarg :bounding-box)
-   (absolute-rectangle :accessor sprite.absolute-rectangle
-		       :initform (make-instance 'rectangle)
-		       :initarg :absolute-rectangle)
-   (string :accessor sprite.string
-	   :initform "Hello World"
-	   :initarg :string)
-   (tickfun :accessor sprite.tickfun
-	    :initform nil
-	    :initarg :tickfun)
-   (onclick :accessor sprite.onclick
-	    :initform nil
-	    :initarg :onclick)
-   (position :accessor sprite.position
-	     :initform (make-instance 'point)
-	     :initarg :position)))
-#+nil
-(defun closest-multiple (x n)
-  (* n (round x n)))
 
 (defparameter *mouse-x* 0.0)
 (defparameter *mouse-y* 0.0)
-#+nil
-(defun random-point ()
-  (make-instance 'point
-		 :x (* *glyph-width* (random 80))
-		 :y (* *glyph-height* (random 25))))
-#+nil
-(defun integer-point (x y)
-  (make-instance 'point
-		 :x (* *glyph-width* x)
-		 :y (* *glyph-height* y)))
-#+nil
-(defun string-bounding-box (string &optional (rectangle (make-instance 'rectangle)))
-  (multiple-value-bind (x y) (string-bounds string)
-    (with-slots (x0 y0 x1 y1) rectangle
-      (setf x0 0.0
-	    y0 (- (* *glyph-height* y))
-	    x1 (* *glyph-width* x)
-	    y1 *glyph-height*))))
-#+nil
-(defun string-bounds (string)
-  (let ((len (length string))
-	(maxx 0)
-	(x 0)
-	(y 0))
-    (dotimes (index len)
-      (let ((char (aref string index)))
-	(cond ((char= char #\Newline)
-	       (when (> x maxx)
-		 (setf maxx x))
-	       (setf x 0)
-	       (decf y))
-	      (t
-	       (setf x (1+ x))))))
-    (values (max x maxx) y)))
-
-#+nil
-(progn
-  (defparameter *selection* nil)
-  (defparameter *hovering* nil)
-  (defparameter *drag-offset-x* 0.0)
-  (defparameter *drag-offset-y* 0.0))
 
 (defparameter *last-scroll* 0)
 (defparameter *scroll-difference* 0)
-(defun init ())
-(defun app ()
+(defun per-frame ()
   (let ((newscroll (floor window::*scroll-y*)))
     (setf *scroll-difference* (- newscroll *last-scroll*))
     (setf *last-scroll* newscroll))
-  #+nil
-  (setf *mouse-x* (floatify window::*mouse-x*)
-	*mouse-y* (- window::*height* (floatify window::*mouse-y*)))
-  #+nil
-  (progn
-    (when (window::skey-j-p (window::keyval #\esc))
-      (pop-sprite-chain-stack))
-    (do-sprite-chain (sprite t) ()
-      (let ((fun (sprite.tickfun sprite)))
-	(when fun
-	  (funcall fun))))
-    (when 
-	(window::skey-j-p (window::mouseval 4))
-      (typecase *hovering*
-	(sprite
-	 (sprite-chain:remove-sprite *hovering*)
-	 (setf *hovering* nil)))))
-
-  #+nil
-  (let ((mousex *mouse-x*)
-	(mousey *mouse-y*))
-      ;;search for topmost sprite to drag
-    (let
-	((sprite
-	  (block cya
-	    (do-sprite-chain (sprite) ()
-	      (with-slots (absolute-rectangle) sprite
-		(when (coordinate-inside-rectangle-p mousex mousey absolute-rectangle)
-		  (return-from cya sprite)))))))
-      (setf *hovering* sprite)
-      (when sprite	
-	(when (window::skey-j-p (window::mouseval :left))
-	  (let ((onclick (sprite.onclick sprite)))
-	    (when onclick
-	      (funcall onclick sprite))))
-	(when (window::skey-j-p (window::mouseval 5))
-	  (with-slots (position) sprite
-	    (with-slots (x y) position
-	      (setf *drag-offset-x* (- x mousex)
-		    *drag-offset-y* (- y mousey))))
-	  (setf *selection* sprite)
-	  (topify-sprite sprite))))
-    (typecase *selection*
-      (sprite (with-slots (x y) (slot-value *selection* 'position)
-		(let ((xnew (closest-multiple (+ *drag-offset-x* mousex) *glyph-width*))
-		      (ynew (closest-multiple (+ *drag-offset-y* mousey) *glyph-height*)))
-		  (unless (eq x xnew)
-		    (setf x xnew))
-		  (unless (eq y ynew)
-		    (setf y ynew)))))))
-  #+nil
-  (when (window::skey-j-r (window::mouseval 5))
-    (setf *selection* nil))
-  #+nil
-  (do-sprite-chain (sprite t) ()
-    (update-bounds sprite))
-  
 
   (glhelp:set-render-area 0 0 window:*width* window:*height*)
   ;;(gl:clear-color 0.0 0.0 0.0 0.0)
@@ -257,18 +101,6 @@
   (render-stuff)
   )
 #+nil
-(defun update-bounds (sprite)
-  (with-slots (bounding-box position absolute-rectangle)
-      sprite
-    (with-slots (x0 y0 x1 y1) bounding-box
-      (with-slots ((xpos x) (ypos y)) position
-	(let ((px0 (+ x0 xpos))
-	      (py0 (+ y0 ypos))
-	      (px1 (+ x1 xpos))
-	      (py1 (+ y1 ypos)))
-	  (with-slots (x0 y0 x1 y1) absolute-rectangle
-	    (setf x0 px0 y0 py0 x1 px1 y1 py1)))))))
-
 (progn
   (deflazy flat-shader-source ()
     (glslgen:ashader
@@ -301,68 +133,11 @@
   (deflazy flat-shader (flat-shader-source gl-context)
     (glhelp::create-gl-program flat-shader-source)))
 
-#+nil
-(defun bytecolor (r g b &optional (a 3))
-  "each channel is from 0 to 3"
-  (byte/255		    
-   (text-sub::color-rgba r g b a)
-   ))
-
-#+nil
-(defun draw-string
-    (x y string &optional
-		  (fgcol
-		   (bytecolor 0 0 0 3
-		    ))
-		  (bgcol		   
-		   (bytecolor 3 3 3 3)
-		    ))
-  (let ((start x)
-	(len (length string)))
-    (dotimes (index len)
-      (let ((char (aref string index)))
-	(cond ((char= char #\Newline)
-	       (setf x start)
-	       (decf y))
-	      (t
-	       (color (byte/255 (char-code char))
-		      bgcol
-		      fgcol)
-	       (vertex (floatify x)
-		       (floatify y)
-		       0.0)			  
-	       (incf x)))))))
-
 (defun render-stuff ()
+  #+nil
   (;;text-sub::with-data-shader (uniform rebase)
    ;; (gl:clear :color-buffer-bit)
  ;;   (gl:disable :depth-test)
-
-    ;;"sprites"
-    #+nil
-    (do-sprite-chain (sprite t) ()
-      (with-slots (position string)
-	  sprite
-	(with-slots ((xpos x) (ypos y)) position
-	  (multiple-value-bind (fgcolor bgcolor) 
-	    (cond ((eq sprite *selection*)
-		   (values
-		    (bytecolor 3 0 0 3)
-		    (bytecolor 0 3 3 0)))
-		  ((eq sprite *hovering*)
-		   (values
-		    (bytecolor 0 0 0)
-		    (bytecolor 3 3 3)))
-		  (t
-		   (values
-		    (bytecolor 3 3 3)
-		    (bytecolor 0 0 0))))
-	    (draw-string (/ xpos *glyph-width*)
-			 (/ ypos *glyph-height*)
-			 string
-			 fgcolor
-			 bgcolor)))))
-    ;;   #+nil
     #+nil
     (rebase -128.0 -128.0))
   #+nil
@@ -473,107 +248,7 @@
       (gl:enable :blend)
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
-    (gl:call-list (glhelp::handle (getfnc 'text-sub::fullscreen-quad)))))
-
-#+nil
-(defun plain-button (fun &optional
-			   (str (string (gensym "nameless-button-")))
-			   (pos (random-point))
-			   (sprite (make-instance 'sprite)))
-  "a statically named button"
-  (let ((rect (make-instance 'rectangle)))
-    (string-bounding-box str rect)
-    (with-slots (position bounding-box string onclick) sprite
-      (setf position pos
-	    bounding-box rect
-	    string str
-	    onclick fun)))
-  sprite)
-
-#+nil
-(progn
-  (defparameter *sprite-chain-stack* nil)
-  (defparameter *sprite-chain-stack-depth* 0)
-  (defun push-sprite-chain-stack (&optional (new-top (sprite-chain:make-sprite-chain)))
-    (push sprite-chain::*sprites* *sprite-chain-stack*)
-    (setf sprite-chain::*sprites* new-top)
-    (incf *sprite-chain-stack-depth*))
-  (defun pop-sprite-chain-stack ()
-    (let ((top (pop *sprite-chain-stack*)))
-      (when top
-	(decf *sprite-chain-stack-depth*)
-	(setf sprite-chain::*sprites* top))))
-  (defun replace-sprite-chain-stack ()
-    (pop-sprite-chain-stack)
-    (push-sprite-chain-stack)))
-#+nil
-(defun bottom-layer ()
-  #+nil
-  (add-sprite
-   (plain-button
-    (lambda (this) (remove-sprite this))
-    "hello world"))
-  (add-sprite
-   (plain-button
-    (lambda (this)
-      (declare (ignorable this))
-      (application::quit))
-    "quit"
-    (integer-point 0 1)))
-  #+nil
-  (add-sprite
-   (plain-button
-    (lambda (this)
-      (declare (ignorable this))
-      (new-layer))
-    "new"))
-  #+nil
-  (let ((rect (make-instance 'rectangle))
-	(numbuf (make-array 0 :fill-pointer 0 :adjustable t :element-type 'character)))
-    (add-sprite
-     (make-instance
-      'sprite
-      :position (integer-point 10 1)
-      :bounding-box rect
-      :tickfun
-      (lambda ()
-	;;mouse coordinates
-	(setf (fill-pointer numbuf) 0)
-	(with-output-to-string (stream numbuf :element-type 'character)
-	  #+nil
-	  (princ (list (floor *mouse-x*)
-		       (floor *mouse-y*))
-		 stream)
-	  (princ (aref block-data::*names*
-		       testbed::*blockid*)
-		 stream)
-	  )
-	(string-bounding-box numbuf rect))
-      :string numbuf
-      ))))
-#+nil
-(defun new-layer ()
-  (push-sprite-chain-stack)
-  (add-sprite 
-   (plain-button
-    (lambda (this)
-      (declare (ignorable this))
-      (new-layer))
-    "new"))
-  (add-sprite
-   (plain-button
-    (lambda (this)
-      (declare (ignorable this))
-      (pop-sprite-chain-stack))
-    "back"))
-  (add-sprite
-   (plain-button
-    nil
-    (format nil "layer ~a" *sprite-chain-stack-depth*))))
-#+nil
-(progn
-  (setf sprite-chain::*sprites* (sprite-chain:make-sprite-chain))
-  (bottom-layer))
+    (glhelp::slow-draw (getfnc 'text-sub::fullscreen-quad))))
 
 (defparameter *fg-default-really* 15)
 (defparameter *bg-default-really* 0)
@@ -984,95 +659,3 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 (defparameter *update-p* nil)
 (defun ncurses-doupdate ()
   (setf *update-p* t)) ;;;when copied to opengl buffer, set again to nil
-
-(defun coerce-to-char (x)
-  (typecase x
-    (number (code-char x))
-    (character x)))
-(defun print-virtual-window (&optional (array *virtual-window*) (stream *standard-output*))
-  (with-virtual-window-lock
-    (let ((horizontal-bar (+ 2 (length (aref array 0)))))
-      (terpri stream)
-      (dotimes (i horizontal-bar) (write-char #\_ stream))
-      (dotimes (line (length array))
-	(terpri stream)
-	(write-char #\| stream)
-	(let ((line-array (aref array line)))
-	  (dotimes (i (length line-array))
-	    (write-char (coerce-to-char (glyph-value (aref line-array i))) stream)))
-	(write-char #\| stream))
-      (terpri stream)
-      (dotimes (i horizontal-bar) (write-char #\_ stream))
-      (terpri stream))))
-
-
-#+nil
-(let ((program (getfnc 'flat-shader)))
-  (glhelp::use-gl-program program)
-  (glhelp:with-uniforms uniform program
-    (gl:uniform-matrix-4fv (uniform :pmv)
-			   (nsb-cga:matrix*
-			    (nsb-cga:scale*
-			     (/ 2.0 (floatify window::*width*))
-			     (/ 2.0 (floatify window::*height*))
-			     1.0)
-			    (nsb-cga:translate* 
-			     (/ (floatify window::*width*)
-				-2.0)				 
-			     (/ (floatify window::*height*)
-				-2.0)
-			     0.0))
-			   nil)))
-#+nil
-(progn
-  (do-sprite-chain (sprite t) ()
-    (render-sprite sprite))
-  (gl:with-primitive :quads
-    (mesh-vertex-tex-coord-color)))
-
-#+nil
-(defparameter *pen-color* (list 1.0 0.0 0.0 1.0))
-
-#+nil
-(defun render-sprite (sprite)
-  (with-slots (absolute-rectangle)
-      sprite
-    (let ((*pen-color*
-	   (cond ((eq sprite *selection*)
-		  '(1.0 0.0 0.0 1.0))
-		 ((eq sprite *hovering*)
-		  '(0.0 0.0 0.0 1.0))
-		 (t
-		  '(1.0 1.0 1.0 1.0)))))
-      (with-slots (x0 y0 x1 y1) absolute-rectangle
-	(draw-quad x0 y0 
-		   x1 y1)))))
-
-#+nil
-(defun render-tile (char-code x y background-color foreground-color)
-  (color (byte/255 char-code)
-	 (byte/255 background-color)
-	 (byte/255 foreground-color))
-  (vertex
-   (floatify x)
-   (floatify y)))
-#+nil
-;;a rainbow
-(let ((count 0))
-  (dotimes (x 16)
-    (dotimes (y 16)
-      (render-tile count x y count (- 255 count))
-      (incf count))))
-
-;;;more geometry
-#+nil
-(defun draw-quad (x0 y0 x1 y1)
-  (destructuring-bind (r g b a) *pen-color*
-    (color r g b a)
-    (vertex x0 y0)
-    (color r g b a)
-    (vertex x0 y1)
-    (color r g b a)
-    (vertex x1 y1)
-    (color r g b a)
-    (vertex x1 y0)))

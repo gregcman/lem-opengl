@@ -421,6 +421,7 @@
                  (get-key code))))))))
 #+nil
 (defparameter *ticks* 0)
+(defparameter *saved-session* nil)
 (defun input-loop (editor-thread)
   ;; (print "lem gl")
   (setf %lem-opengl::*columns* 80
@@ -434,19 +435,6 @@
 	 (handler-case
 	     (let ((out-token (list "good" "bye")))
 	       (catch out-token
-		 (text-sub::change-color-lookup
-		  ;;'text-sub::color-fun
-		  'lem-sucle::color-fun
-		  #+nil
-		  (lambda (n)
-		    (values-list
-		     (print (mapcar (lambda (x) (utility::floatify x))
-				    (nbutlast (aref lem.term::*colors* n))))))
-		  )
-		 (application::refresh '%lem-opengl::virtual-window)
-		 (application::refresh '%lem-opengl::event-queue)
-		 (window::set-vsync t)
-		 (lem.term::reset-color-pair)
 		 (loop
 		    (per-frame editor-thread out-token))))
 	   (exit-editor (c) (return-from out c))))))
@@ -459,6 +447,20 @@
 
 (defparameter *scroll-speed* 3)
 (defun per-frame (editor-thread out-token)
+  (application::on-session-change *saved-session*
+    (text-sub::change-color-lookup
+     ;;'text-sub::color-fun
+     'lem-sucle::color-fun
+     #+nil
+     (lambda (n)
+       (values-list
+	(print (mapcar (lambda (x) (utility::floatify x))
+		       (nbutlast (aref lem.term::*colors* n))))))
+     )
+    (application::refresh '%lem-opengl::virtual-window)
+    (application::refresh '%lem-opengl::event-queue)
+    (window::set-vsync t)
+    (lem.term::reset-color-pair))
   (application::getfnc '%lem-opengl::virtual-window)
   (application::getfnc '%lem-opengl::event-queue)
   (application:poll-app)
