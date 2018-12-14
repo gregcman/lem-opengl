@@ -130,6 +130,9 @@
 			 bg))
   (ncurses-init-pair 0 *fg-default* *bg-default*))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;Window and window operations
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (struct-to-clos:struct->class
  (defstruct win
@@ -246,8 +249,6 @@
 (defun ncurses-move (y x)
   (ncurses-wmove *std-scr* y x))
 
-(defun ncurses-vline (char n)
-  (ncurses-wvline *std-scr* char n))
 ;;https://www.mkssoftware.com/docs/man3/curs_border.3.asp
 (defun ncurses-wvline (win char n)
   (let ((y (win-cursor-y win))
@@ -255,6 +256,8 @@
     (loop :for i :from y :below (min (+ y n)
 				     (win-lines win))
        :do (add-char x i char))))
+(defun ncurses-vline (char n)
+  (ncurses-wvline *std-scr* char n))
 
 (defun ncurses-keypad (win value)
   (setf (win-keypad-p win) value))
@@ -395,11 +398,9 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	 (add-char x y char win)
 	 (advance))
 	(t (error "what char? ~s" (char-code char)))))))
-
 (defun next-8 (n)
   "this is for tabbing, see waddch. its every 8th column"
   (* 8 (+ 1 (floor n 8))))
-
 (defun add-char (x y value &optional (win *win*))
   (when (and (> (win-lines win) y -1)
 	     (> (win-cols win) x -1))
