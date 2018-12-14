@@ -4,11 +4,11 @@
   ()
   (:default-initargs
    :native-scroll-support nil
-   :redraw-after-modifying-floating-window t))
+    :redraw-after-modifying-floating-window t))
 
-(setf *implementation* (make-instance 'sucle))
+(setf lem:*implementation* (make-instance 'sucle))
 
-(define-condition exit-editor (editor-condition)
+(define-condition exit-editor (lem:editor-condition)
   ((value
     :initarg :value
     :reader exit-editor-value
@@ -25,13 +25,13 @@
    lock))
 
 (defun attribute-to-bits (attribute-or-name)
-  (let ((attribute (ensure-attribute attribute-or-name nil))
+  (let ((attribute (lem:ensure-attribute attribute-or-name nil))
         (cursorp (eq attribute-or-name 'cursor)))
     (if (null attribute)
         0
         (or (lem::attribute-%internal-value attribute)
-            (let* ((foreground (attribute-foreground attribute))
-                   (background (attribute-background attribute))
+            (let* ((foreground (lem:attribute-foreground attribute))
+                   (background (lem:attribute-background attribute))
                    (bits (logior (lem.term:get-color-pair foreground background)
                                  0
                                  (if (lem::attribute-bold-p attribute)
@@ -91,7 +91,7 @@
       ;; button1 up
       ((null state)
        (let ((o (first *dragging-window*)))
-         (when (windowp o)
+         (when (lem:windowp o)
            (multiple-value-bind (x y w h) (mouse-get-window-rect o)
 	     (declare (ignorable x y))
              (setf (lem:current-window) o)
@@ -118,7 +118,7 @@
 		     (- ;;charms/ll:*lines*
 		      %lem-opengl::*lines*
 		      1
-					    ))
+		      ))
                     (lem:redraw-display))))
                )))
          (when o
@@ -186,17 +186,17 @@
     #+sbcl
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
-      (send-abort-event editor-thread t))))
+      (lem:send-abort-event editor-thread t))))
 
 (defun left-click-event ()
-  (send-event (mouse-event-proc 
-	       (window::skey-p
-		(window::mouseval :left)
-		window::*control-state*)
-	       (floor window::*mouse-x*
-		      %lem-opengl::*glyph-width*)
-	       (floor window::*mouse-y*
-		      %lem-opengl::*glyph-height*))))
+  (lem:send-event (mouse-event-proc 
+		   (window::skey-p
+		    (window::mouseval :left)
+		    window::*control-state*)
+		   (floor window::*mouse-x*
+			  %lem-opengl::*glyph-width*)
+		   (floor window::*mouse-y*
+			  %lem-opengl::*glyph-height*))))
 
 (defun resize-event ()
   (block out
@@ -204,7 +204,7 @@
     (loop (multiple-value-bind (event exists)
 	      (lparallel.queue:try-pop-queue %lem-opengl::*queue*)
 	    (if exists
-		(send-event event)
+		(lem:send-event event)
 		(return-from out))))))
 
 (defun scroll-event ()
@@ -232,30 +232,33 @@
 			nil;;window::*alt* ;;FIXME -> makes M-X not M-x
 			window::*super*)
 		     (let ((key (code-to-key byte)))
-		       (send-event
-			(make-key :sym (key-sym key)
-				  :ctrl (or (key-ctrl key)
-					    window::*control*)
-				  :shift (or (key-shift key)
+		       (lem:send-event
+			(lem:make-key
+			 :sym (lem:key-sym key)
+			 :ctrl (or (lem:key-ctrl key)
+				   window::*control*)
+			 :shift (or (lem:key-shift key)
 					;  window::*shift*
-					     )
-				  :meta (or (key-meta key)
-					    window::*alt*)
-				  :super (or (key-super key)
-					     window::*super*)))))
+				    )
+			 :meta (or (lem:key-meta key)
+				   window::*alt*)
+			 :super (or (lem:key-super key)
+				    window::*super*)))))
 		   (let ((key (get-sym-from-glfw3-code name)))
 		     (if key
-			 (send-event (make-key :sym key
-					       :meta window::*alt*
-					       :super window::*super*
-					       :shift window::*shift*
-					       :ctrl window::*control*))
+			 (lem:send-event (lem:make-key
+					  :sym key
+					  :meta window::*alt*
+					  :super window::*super*
+					  :shift window::*shift*
+					  :ctrl window::*control*))
 			 (format *error-output*
 				 "~s key unimplemented" name))))))))))))
 
-(add-hook *before-init-hook*
-          (lambda ()
-            (load-theme "emacs-dark")))
+(lem:add-hook
+ lem:*before-init-hook*
+ (lambda ()
+   (lem:load-theme "emacs-dark")))
 
 (defmethod lem-if:invoke ((implementation sucle) function)
   (let ((result nil)
@@ -364,7 +367,7 @@
       (;;charms/ll:wresize
        %lem-opengl::ncurses-wresize
        (ncurses-view-modeline-scrwin view)
-       (minibuffer-window-height)
+       (lem:minibuffer-window-height)
        width))))
 
 (defmethod lem-if:set-view-pos ((implementation sucle) view x y)
@@ -465,14 +468,16 @@
      %lem-opengl::ncurses-wnoutrefresh
      (ncurses-view-scrwin view)))
 
-;;  (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
+  ;;  (%lem-opengl::print-virtual-window %lem-opengl::*virtual-window* *no*)
   )
 
 (defmethod lem-if:update-display ((implementation sucle))
-  (let ((view (window-view (current-window))))
+  (let ((view (lem:window-view (lem:current-window))))
     (with-view-lock view
       (let ((scrwin (ncurses-view-scrwin view)))
-	(if (lem::covered-with-floating-window-p (current-window) lem::*cursor-x* lem::*cursor-y*)
+	(if (lem::covered-with-floating-window-p
+	     (lem:current-window)
+	     lem::*cursor-x* lem::*cursor-y*)
 	    (;;charms/ll:curs-set
 	     %lem-opengl::ncurses-curs-set
 	     0)
@@ -516,43 +521,43 @@
     acc))
 
 (defun color-fun (color)
-    (labels ((bcolor (r g b)
-	       (values (/ (utility::floatify r) 255.0)
-		       (/ (utility::floatify g) 255.0)
-		       (/ (utility::floatify b) 255.0)))
-	     (c (r g b)
-	       (bcolor r g b))
-	     (c6 (x)
-	       (destructuring-bind (r g b) (last (append (list 0 0 0)
-							 (c6? x))
-						 3)
-		 (bcolor (* 51 r)
-			 (* 51 g)
-			 (* 51 b))))
-	     (g (x)
-	       (let* ((magic (load-time-value (/ 255.0 23.0)))
-		      (val (* x magic)))
-		 (c val val val))))
-      (case color
-	(0 (c 0 0 0))
-	(1 (c 205 0 0))
-	(2 (c 0 205 0))
-	(3 (c 205 205 0))
-	(4 (c 0 0 238))
-	(5 (c 205 0 205))
-	(6 (c 0 205 205))
-	(7 (c 229 229 229))
-	(8 (c 127 127 127))
-	(9 (c 255 0 0))
-	(10 (c 0 255 0))
-	(11 (c 255 255 0))
-	(12 (c 92 92 255))
-	(13 (c 255 0 255))
-	(14 (c 0 255 255))
-	(15 (c 255 255 255))
-	(t (if (< color (+ 16 (* 6 6 6)))
-	       (c6 (- color 16))
-	       (g (- color (+ 16 (* 6 6 6)))))))))
+  (labels ((bcolor (r g b)
+	     (values (/ (utility::floatify r) 255.0)
+		     (/ (utility::floatify g) 255.0)
+		     (/ (utility::floatify b) 255.0)))
+	   (c (r g b)
+	     (bcolor r g b))
+	   (c6 (x)
+	     (destructuring-bind (r g b) (last (append (list 0 0 0)
+						       (c6? x))
+					       3)
+	       (bcolor (* 51 r)
+		       (* 51 g)
+		       (* 51 b))))
+	   (g (x)
+	     (let* ((magic (load-time-value (/ 255.0 23.0)))
+		    (val (* x magic)))
+	       (c val val val))))
+    (case color
+      (0 (c 0 0 0))
+      (1 (c 205 0 0))
+      (2 (c 0 205 0))
+      (3 (c 205 205 0))
+      (4 (c 0 0 238))
+      (5 (c 205 0 205))
+      (6 (c 0 205 205))
+      (7 (c 229 229 229))
+      (8 (c 127 127 127))
+      (9 (c 255 0 0))
+      (10 (c 0 255 0))
+      (11 (c 255 255 0))
+      (12 (c 92 92 255))
+      (13 (c 255 0 255))
+      (14 (c 0 255 255))
+      (15 (c 255 255 255))
+      (t (if (< color (+ 16 (* 6 6 6)))
+	     (c6 (- color 16))
+	     (g (- color (+ 16 (* 6 6 6)))))))))
 
 (defun start-lem ()
   (let ((lem::*in-the-editor* nil))
