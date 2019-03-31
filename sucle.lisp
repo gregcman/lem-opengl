@@ -325,8 +325,8 @@
 			      realbg
 			      (byte/255
 			       (text-sub::char-attribute
-				(logtest ncurses-clone::A_Underline attributes)
 				(logtest ncurses-clone::A_bold attributes)
+				(logtest ncurses-clone::A_Underline attributes)
 				t))
 			      index
 			      i))
