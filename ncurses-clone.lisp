@@ -87,29 +87,6 @@
 
 (defparameter *clear-glyph* (gen-glyph #\Space 0))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;The virtual window
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defparameter *columns* 80)
-(defparameter *lines* 25)
-
-(defun make-virtual-window ()
-  (let ((array (make-array *lines*)))
-    (dotimes (i (length array))
-      (setf (aref array i)
-	    (make-array *columns*
-			:initial-element *clear-glyph*)))
-    array))
-(defparameter *virtual-window* (make-virtual-window))
-(defparameter *virtual-window-lock* (bt:make-recursive-lock))
-(defun set-virtual-window (x y value)
-  (setf (aref (aref *virtual-window* y) x)
-	value))
-
-(defmacro with-virtual-window-lock (&body body)
-  `(bt:with-recursive-lock-held (*virtual-window-lock*)
-     ,@body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;Color Pairs
@@ -259,10 +236,36 @@
   ;;(remove-win win)
   )
 
-(defparameter *std-scr* nil)
-(defun reset-standard-screen ()
-  (setf *std-scr* (ncurses-newwin *lines* *columns* 0 0)))
-(reset-standard-screen)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;The virtual window
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *columns* 80)
+(defparameter *lines* 25)
+
+(defparameter *std-scr* (ncurses-newwin *lines* *columns* 0 0))
+
+#+nil
+(defun make-virtual-window ()
+  (let ((array (make-array *lines*)))
+    (dotimes (i (length array))
+      (setf (aref array i)
+	    (make-array *columns*
+			:initial-element *clear-glyph*)))
+    array))
+#+nil
+(defparameter *virtual-window* (make-virtual-window))
+(defparameter *virtual-window-lock* (bt:make-recursive-lock))
+(defun set-virtual-window (x y value)
+  (setf (ref-grid x y (win-data *std-scr*)) value)
+  #+nil
+  (setf (aref (aref *virtual-window* y) x)
+	value))
+
+(defmacro with-virtual-window-lock (&body body)
+  `(bt:with-recursive-lock-held (*virtual-window-lock*)
+     ,@body))
+
 
 ;;(defun ncurses-wscrl (win n))
 ;;https://linux.die.net/man/3/scrollok
@@ -493,8 +496,14 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	  (ywin (win-y win))
 	  ;;(cursor-x (win-cursor-x win))
 	  ;;(cursor-y (win-cursor-y win))
-	  (columns (length (aref *virtual-window* 0)))
-	  (lines (length *virtual-window*)))
+	  (columns
+	   (win-cols *std-scr*)
+	   ;;(length (aref *virtual-window* 0))
+	   )
+	  (lines
+	   (win-lines *std-scr*)
+	   ;;(length *virtual-window*)
+	   ))
       (dotimes (y (win-lines win))
 	(dotimes (x (win-cols win))
 	  (let ((glyph (ref-grid x y grid)))

@@ -18,3 +18,4 @@
 ;;FIXME::correctly render the vertical bar between windows
 ;;FIXME::when characters overwrite wide characters
 ;;FIXME::resolution blurry when width thin and height tall
+;;FIXME::don't use 'virtual window', use *std-scr*?

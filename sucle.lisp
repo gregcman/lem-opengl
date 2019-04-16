@@ -15,8 +15,10 @@
   (lparallel.queue:push-queue :resize event-queue)
   (setf ncurses-clone::*columns* (floor w *glyph-width*)
 	ncurses-clone::*lines* (floor h *glyph-height*))
-  (ncurses-clone::reset-standard-screen)
+  ;;(ncurses-clone::reset-standard-screen)
   (ncurses-clone::with-virtual-window-lock
+    (ncurses-clone::ncurses-wresize ncurses-clone::*std-scr* h w)
+    #+nil
     (setf ncurses-clone::*virtual-window*
 	  (ncurses-clone::make-virtual-window))))
 
@@ -309,7 +311,7 @@
 	 
 	 (let ((len ncurses-clone::*lines*))
 	   (dotimes (i len)
-	     (let ((array (aref ncurses-clone::*virtual-window* (- len i 1)))
+	     (let ((array (aref (ncurses-clone::win-data ncurses-clone::*std-scr*) (- len i 1)))
 		   (index 0))
 	       (block out
 		 (do ()
