@@ -362,4 +362,4 @@
       (gl:enable :blend)
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
-    (glhelp::slow-draw (application::getfnc 'text-sub::fullscreen-quad))))
+    (text-sub::draw-fullscreen-quad)))
