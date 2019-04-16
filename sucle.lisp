@@ -209,18 +209,23 @@
   (dolist (press window::*char-keys*)
     (destructuring-bind (byte mods) press
       (let ((key (code-to-key byte)))
-	(lem:send-event
-	 (lem:make-key
-	  :sym (lem:key-sym key)
-	  :ctrl (or (lem:key-ctrl key)
-		    (logtest window::+control+ mods))
-	  :shift (or (lem:key-shift key)
-		     ;;window::*shift* ;;FIXME::why is this here?
-		     )
-	  :meta (or (lem:key-meta key)
-		    (logtest window::+alt+ mods))
-	  :super (or (lem:key-super key)
-		     (logtest window::+super+ mods)))))))
+	(unless
+	    ;;FIXME::better logic to handle this? ;;This is because space gets sent twice,
+	    ;;once as a unicode char and once as a control key. The control key is for
+	    ;;exampe C-Space
+	    (member byte (load-time-value (list (char-code #\Space))))
+	  (lem:send-event
+	   (lem:make-key
+	    :sym (lem:key-sym key)
+	    :ctrl (or (lem:key-ctrl key)
+		      (logtest window::+control+ mods))
+	    :shift (or (lem:key-shift key)
+		       ;;window::*shift* ;;FIXME::why is this here?
+		       )
+	    :meta (or (lem:key-meta key)
+		      (logtest window::+alt+ mods))
+	    :super (or (lem:key-super key)
+		       (logtest window::+super+ mods))))))))
   ;;control key input, such as Tab, delete, enter
   (let ((array (window::control-state-jp-or-repeat window::*control-state*)))
     (declare (type window::mouse-keyboard-input-array array))
@@ -270,6 +275,8 @@
     (gl:end))
   (when ncurses-clone::*update-p*
     (setf ncurses-clone::*update-p* nil)
+    ;;Set the title of the window to the name of the current buffer
+    (window:set-caption (lem-base:buffer-name (lem:current-buffer)))
     ;;;Copy the virtual screen to a c-array,
     ;;;then send the c-array to an opengl texture
     (let* ((c-array-lines
