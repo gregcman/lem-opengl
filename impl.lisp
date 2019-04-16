@@ -23,23 +23,30 @@
    height
    lock))
 
+(defparameter *editor-thread* nil)
 (defmethod lem-if:invoke ((implementation sucle) function)
-  (let ((result nil)
-        (input-thread (bt:current-thread)))
-    (lem.term:term-init)
-    (let ((editor-thread
-	   (funcall function
-		    nil
-		    (lambda (report)
-		      (bt:interrupt-thread
-		       input-thread
-		       (lambda ()
-			 (print report)
-			 (error 'exit-editor :value report)))))))
-      (setf result (input-loop editor-thread)))
-    (when (and (typep result 'exit-editor)
-               (exit-editor-value result))
-      (format t "~&~A~%" (exit-editor-value result)))))
+  (when (or (null *editor-thread*)
+	    (not (bt:thread-alive-p *editor-thread*)))
+    (print "starting editor thread")
+    (let (;;(result nil)
+	  (input-thread (bt:current-thread))
+	  )
+      (lem.term:term-init)
+      (setf *editor-thread*
+	    (funcall function
+		     nil
+		     (lambda (report)
+		       (bt:interrupt-thread
+			input-thread
+			(lambda ()
+			  (print report)
+			  (error 'exit-editor :value report))))))
+      #+nil
+      (setf result (input-loop editor-thread))
+      #+nil
+      (when (and (typep result 'exit-editor)
+		 (exit-editor-value result))
+	(format t "~&~A~%" (exit-editor-value result))))))
 
 (defmethod lem-if:display-background-mode ((implementation sucle))
   (lem.term:background-mode))
@@ -221,7 +228,7 @@
 
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   (with-view-lock view
-    #+nil ;;;FIXME
+    ;#+nil ;;;FIXME
     (let ((attr (attribute-to-bits 'modeline)))
       (;;charms/ll:attron
        ncurses-clone::ncurses-attron
@@ -240,6 +247,7 @@
       (;;charms/ll:attroff
        ncurses-clone::ncurses-attroff
        attr)
+      #+nil;;FIXME
       (;;charms/ll:wnoutrefresh
        ncurses-clone::ncurses-wnoutrefresh
        ;;charms/ll:*stdscr*
@@ -254,33 +262,39 @@
     (;;charms/ll:wnoutrefresh
      ncurses-clone::ncurses-wnoutrefresh
      (ncurses-view-scrwin view)))
-
-  ;;  (ncurses-clone::print-virtual-window ncurses-clone::*virtual-window* *no*)
   )
 
 (defmethod lem-if:update-display ((implementation sucle))
-  (let ((view (lem:window-view (lem:current-window))))
-    (with-view-lock view
-      (let ((scrwin (ncurses-view-scrwin view)))
-	(if (lem::covered-with-floating-window-p
-	     (lem:current-window)
-	     lem::*cursor-x* lem::*cursor-y*)
-	    (;;charms/ll:curs-set
-	     ncurses-clone::ncurses-curs-set
-	     0)
-	    (progn
-	      (;;charms/ll:curs-set
-	       ncurses-clone::ncurses-curs-set
-	       1)
-	      (;;charms/ll:wmove
-	       ncurses-clone::ncurses-wmove
-	       scrwin lem::*cursor-y* lem::*cursor-x*)))
-	;;FIXME
-	(;;charms/ll:wnoutrefresh
-	 ncurses-clone::ncurses-wnoutrefresh
-	 scrwin)
-	(;;charms/ll:doupdate
-	 ncurses-clone::ncurses-doupdate)))))
+  (flet ((render-window (window)
+	   (let ((view (lem:window-view window)))
+	     (with-view-lock view
+	       (let ((scrwin (ncurses-view-scrwin view)))
+		 (if (lem::covered-with-floating-window-p
+		      window
+		      lem::*cursor-x* lem::*cursor-y*)
+		     (;;charms/ll:curs-set
+		      ncurses-clone::ncurses-curs-set
+		      0)
+		     (progn
+		       (;;charms/ll:curs-set
+			ncurses-clone::ncurses-curs-set
+			1)
+		       (;;charms/ll:wmove
+			ncurses-clone::ncurses-wmove
+			scrwin lem::*cursor-y* lem::*cursor-x*)))
+		 ;;FIXME
+		 (;;charms/ll:wnoutrefresh
+		  ncurses-clone::ncurses-wnoutrefresh
+		  scrwin))))))
+    #+nil
+    (ncurses-clone::ncurses-wnoutrefresh
+     ncurses-clone::*std-scr*)
+    #+nil
+    (map nil #'render-window (lem:window-list))
+    ;;#+nil
+    (render-window (lem:current-window)))
+  (;;charms/ll:doupdate
+   ncurses-clone::ncurses-doupdate))
 
 (defmethod lem-if:scroll ((implementation sucle) view n)
   (with-view-lock view

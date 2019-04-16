@@ -21,7 +21,7 @@
 	  (ncurses-clone::make-virtual-window))))
 
 (defparameter *saved-session* nil)
-(defun input-loop (editor-thread)
+(defun input-loop (&optional (editor-thread lem-sucle::*editor-thread*))
   (setf ncurses-clone::*columns* 80
 	ncurses-clone::*lines* 25)
   (setf application::*main-subthread-p* nil)
@@ -46,6 +46,7 @@
 (defparameter *scroll-difference* 0)
 (defparameter *scroll-speed* 3)
 (defun per-frame (editor-thread out-token)
+  (declare (ignorable editor-thread))
   (application::on-session-change *saved-session*
     (text-sub::change-color-lookup
      ;;'text-sub::color-fun
@@ -59,7 +60,8 @@
     (application::refresh 'virtual-window)
     (application::refresh 'event-queue)
     (window::set-vsync t)
-    (lem.term::reset-color-pair))
+    ;;(lem.term::reset-color-pair)
+    )
   (application::getfnc 'virtual-window)
   (application::getfnc 'event-queue)
   (application:poll-app)
@@ -77,7 +79,8 @@
   (render-stuff)
   (handler-case
       (progn
-	(unless (bt:thread-alive-p editor-thread)
+	(when window::*status*
+	  ;;(bt:thread-alive-p editor-thread)
 	  (throw out-token nil))
 	(resize-event)
 	(scroll-event)
@@ -90,6 +93,7 @@
 	      (send-abort-event editor-thread nil)
 	      ;;(send-event event)
 	      )))
+    #+nil
     #+sbcl
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
