@@ -102,16 +102,73 @@
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
       (lem:send-abort-event editor-thread t))))
-
+(defparameter *output* *standard-output*)
+(defparameter *mouse-clicked-at-last* nil)
+(defparameter *marking* nil)
 (defun left-click-event ()
-  (lem:send-event (mouse-event-proc 
-		   (window::skey-p
-		    (window::mouseval :left)
-		    window::*control-state*)
-		   (floor window::*mouse-x*
-			  *glyph-width*)
-		   (floor window::*mouse-y*
-			  *glyph-height*))))
+  (let* ((x (floor window::*mouse-x*
+		   *glyph-width*))
+	 (y (floor window::*mouse-y*
+		   *glyph-height*))
+	 (just-pressed (window::skey-j-p
+			(window::mouseval :left)
+			window::*control-state*))
+	 (just-released (window::skey-j-r
+			 (window::mouseval :left)
+			 window::*control-state*))
+	 (pressing 
+	  (window::skey-p
+	   (window::mouseval :left)
+	   window::*control-state*))
+	 (press-coord-change
+	  (let ((coord (list x y)))
+	    (if (not (equal coord
+			    *mouse-clicked-at-last*))
+		(progn (setf *mouse-clicked-at-last* coord)
+		       t)
+		nil)))
+	 ;;'different' is used to track whether changes happened, and whether or not
+	 ;;things should be updated
+	 (different (or (and pressing
+			     press-coord-change)
+			just-released
+			just-pressed)))
+    (when different
+      (lem:send-event
+       (mouse-event-proc 
+	pressing
+	x
+	y)))
+    (when pressing
+      #+nil
+      (print (list (lem:current-point)
+		   (lem:buffer-mark (lem:current-buffer))))
+      ;;#+nil
+   ;; #+nil
+      (lem:send-event
+       (lambda ()
+	 (find-window-cursor x y)))
+      ;;#+nil
+      (progn
+	(when just-pressed
+	  (lem:buffer-mark-cancel (lem:current-buffer)))
+	(when (and (not *marking*)
+		   press-coord-change)
+	  ;;beginning to mark
+	  ;;(print 3434)
+	  (lem:send-event
+	   (lambda ()
+	     (lem:set-current-mark (lem:current-point))
+	     ;;(lem-base:region-end)
+	     ;;(lem:redraw-display)
+	     ))
+	  (setf *marking* t))))
+    (when just-released
+      (setf *marking* nil))
+    (when different
+      (lem:send-event
+       (lambda ()
+	 (lem:redraw-display))))))
 
 ;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
 (defvar *dragging-window* ())
@@ -126,6 +183,19 @@
           (lem:window-y      window)
           (lem:window-width  window)
           (lem:window-height window)))
+
+(defun find-window-cursor (x1 y1)
+  (find-if
+   (lambda (o)
+     (multiple-value-bind (x y w h) (mouse-get-window-rect o)
+       (cond
+	 ;; move cursor
+	 ((and (<= x x1 (+ x w -1)) (<= y y1 (+ y h -2)))
+	  (setf (lem:current-window) o)
+	  (mouse-move-to-cursor o (- x1 x) (- y1 y))
+	  t)
+	 (t nil))))
+   (lem:window-list)))
 
 (defun mouse-event-proc (state x1 y1)
   (lambda ()
@@ -146,6 +216,7 @@
                  (setf *dragging-window* (list o 'x))
                  t)
                 ;; move cursor
+		#+nil
                 ((and (<= x x1 (+ x w -1)) (<= y y1 (+ y h -2)))
                  (setf (lem:current-window) o)
                  (mouse-move-to-cursor o (- x1 x) (- y1 y))
