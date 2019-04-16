@@ -19,12 +19,17 @@
 ;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
 #+nil "The other is to set the current-highlight value. This is logical-or'ed with any highlight you specify the first way. You do this with the functions attron(), attroff(), and attrset(); see the manual pages for details. Color is a special kind of highlight. The package actually thinks in terms of color pairs, combinations of foreground and background colors. The sample code above sets up eight color pairs, all of the guaranteed-available colors on black. Note that each color pair is, in effect, given the name of its foreground color. Any other range of eight non-conflicting values could have been used as the first arguments of the init_pair() values."
 (defparameter *current-attributes* 0)
+#+nil
 (defun ncurses-attron (n)
   (setf *current-attributes*
 	(logior *current-attributes* n)))
+#+nil
 (defun ncurses-attroff (n)
   (setf *current-attributes*
 	(logand *current-attributes* (lognot n))))
+(defmacro with-attributes ((attributes) &body body)
+  `(let ((*current-attributes* (logior ,attributes *current-attributes*)))
+     ,@body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;Glyphs
@@ -56,7 +61,7 @@
 				 (safety 0)))
        (ash glyph -8)))
     (big-glyph (big-glyph-attributes glyph))))
-
+#+nil
 (defun prepare-attributes-for-glyph (attributes)
   (declare (type glyph-attributes attributes))
   (declare (optimize (speed 3)
@@ -488,7 +493,7 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      win))
   win)
 
-(defun ncurses-wnoutrefresh (&optional (win *win*))
+(defun ncurses-wnoutrefresh (&optional (win *win*) (cursor-mode *cursor-state*))
   ;;;FIXME:: follow https://linux.die.net/man/3/wnoutrefresh with "touching"
   ;;;different lines
   (when (win-clearok win)
@@ -498,8 +503,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
     (let ((grid (win-data win))
 	  (xwin (win-x win))
 	  (ywin (win-y win))
-	  ;;(cursor-x (win-cursor-x win))
-	  ;;(cursor-y (win-cursor-y win))
+	  (cursor-x (win-cursor-x win))
+	  (cursor-y (win-cursor-y win))
 	  (columns
 	   (win-cols *std-scr*)
 	   ;;(length (aref *virtual-window* 0))
@@ -516,12 +521,19 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      (when (and (> columns xdest -1)
 			 (> lines ydest -1))
 
-		#+nil
-		(when (and (= cursor-x xdest)
-			   (= cursor-y ydest))
+		;;reverse the color of the cursor, if applicable
+		(when (and
+		       (not (eq :invisible cursor-mode))
+		       (= cursor-x x)
+		       (= cursor-y y))
 		  (setf glyph
-			(logior glyph
-				(prepare-attributes-for-glyph a_reverse))))
+			(gen-glyph (glyph-value glyph)
+				   (logxor (glyph-attributes glyph)
+					   (case cursor-mode
+					     (:normal (logior a_reverse))
+					     (:very-visible (logior a_reverse a_bold
+								    a_underline))
+					     (otherwise 0))))))
 		(set-virtual-window xdest
 				    ydest
 				    glyph

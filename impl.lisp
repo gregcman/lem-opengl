@@ -178,7 +178,9 @@
                                      ;;charms/ll:a_underline
 				     ncurses-clone::a_underline
                                      0)
-				 (if (or cursorp (lem::attribute-reverse-p attribute))
+				 (if (or
+				      cursorp
+				      (lem::attribute-reverse-p attribute))
 				     ncurses-clone::a_reverse
 				     0))))
               (setf (lem::attribute-%internal-value attribute) bits)
@@ -187,14 +189,17 @@
 (defmethod lem-if:print ((implementation sucle) view x y string attribute)
   (with-view-lock view
     (let ((attr (attribute-to-bits attribute)))
+      #+nil
       (;;charms/ll:wattron
        ncurses-clone::ncurses-wattron
        (ncurses-view-scrwin view) attr)
-      ;;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
-      (;;charms/ll:mvwaddstr
-       ncurses-clone::ncurses-mvwaddstr
-       (ncurses-view-scrwin view) y x string)
+      (ncurses-clone::with-attributes (attr)
+	;;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
+	(;;charms/ll:mvwaddstr
+	 ncurses-clone::ncurses-mvwaddstr
+	 (ncurses-view-scrwin view) y x string))
       ;;(charms/ll:scrollok (ncurses-view-scrwin view) 1)
+      #+nil
       (;;charms/ll:wattroff
        ncurses-clone::ncurses-wattroff
        (ncurses-view-scrwin view) attr))))
@@ -202,12 +207,15 @@
 (defmethod lem-if:print-modeline ((implementation sucle) view x y string attribute)
   (with-view-lock view
     (let ((attr (attribute-to-bits attribute)))
+      #+nil
       (;;charms/ll:wattron
        ncurses-clone::ncurses-wattron
        (ncurses-view-modeline-scrwin view) attr)
-      (;;charms/ll:mvwaddstr
-       ncurses-clone::ncurses-mvwaddstr
-       (ncurses-view-modeline-scrwin view) y x string)
+      (ncurses-clone::with-attributes (attr)
+	(;;charms/ll:mvwaddstr
+	 ncurses-clone::ncurses-mvwaddstr
+	 (ncurses-view-modeline-scrwin view) y x string))
+      #+nil
       (;;charms/ll:wattroff
        ncurses-clone::ncurses-wattroff
        (ncurses-view-modeline-scrwin view) attr))))
@@ -236,24 +244,27 @@
   (with-view-lock view
     ;#+nil ;;;FIXME
     (let ((attr (attribute-to-bits 'lem:modeline)))
+      #+nil
       (;;charms/ll:attron
        ncurses-clone::ncurses-attron
        attr)
       ;;#+nil ;;FIXME:: disabling
       ;;(print view)
       ;;(print ncurses-clone::*std-scr*)
-      (when (and (ncurses-view-modeline-scrwin view)
-		 (< 0 (ncurses-view-x view)))
-	(;;charms/ll:move
-	 ncurses-clone::ncurses-move
-	 (ncurses-view-y view)
-	 (1- (ncurses-view-x view)))
-	(;;charms/ll:vline
-	 ncurses-clone::ncurses-vline
-	 #\space		    
-	 (1+ (ncurses-view-height view))))
+      (ncurses-clone::with-attributes (attr)
+	(when (and (ncurses-view-modeline-scrwin view)
+		   (< 0 (ncurses-view-x view)))
+	  (;;charms/ll:move
+	   ncurses-clone::ncurses-move
+	   (ncurses-view-y view)
+	   (1- (ncurses-view-x view)))
+	  (;;charms/ll:vline
+	   ncurses-clone::ncurses-vline
+	   #\space		    
+	   (1+ (ncurses-view-height view)))))
       ;;(print view)
       ;;(print ncurses-clone::*std-scr*)
+      #+nil
       (;;charms/ll:attroff
        ncurses-clone::ncurses-attroff
        attr)
@@ -295,7 +306,10 @@
 		 ;;FIXME
 		 (;;charms/ll:wnoutrefresh
 		  ncurses-clone::ncurses-wnoutrefresh
-		  scrwin))))))
+		  scrwin)
+		 ;;;FIXME::does not mirror the lem/ncurses code
+		 (ncurses-clone::ncurses-curs-set 0)
+		 )))))
     #+nil
     (ncurses-clone::ncurses-wnoutrefresh
      ncurses-clone::*std-scr*)
