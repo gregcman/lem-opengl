@@ -369,8 +369,8 @@
   " The addch(), waddch(), mvaddch() and mvwaddch() routines put the character ch into the given window at its current window position, which is then advanced. They are analogous to putchar() in stdio(). If the advance is at the right margin, the cursor automatically wraps to the beginning of the next line. At the bottom of the current scrolling region, if scrollok() is enabled, the scrolling region is scrolled up one line.
 
 If ch is a tab, newline, or backspace, the cursor is moved appropriately within the window. Backspace moves the cursor one character left; at the left edge of a window it does nothing. Newline does a clrtoeol(), then moves the cursor to the window left margin on the next line, scrolling the window if on the last line). Tabs are considered to be at every eighth column. https://www.mkssoftware.com/docs/man3/curs_addch.3.asp If ch is any control character other than tab, newline, or backspace, it is drawn in ^X notation. Calling winch() after adding a control character does not return the character itself, but instead returns the ^-representation of the control character. (To emit control characters literally, use echochar().) "
-  (let ((x (win-cursor-x win))
-	(y (win-cursor-y win)))
+  (symbol-macrolet ((x (win-cursor-x win))
+		    (y (win-cursor-y win)))
     (flet ((advance ()	     
 	     (if (= (max-cursor-x win) x)
 		 (if (= (max-cursor-y win) y)
@@ -407,8 +407,24 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	((standard-char-p char)
 	 (add-char x y char win)
 	 (advance))
-	(t (add-char x y 65 win)
-	   (advance)
+	(t
+	 (let ((width 
+		(lem-base:char-width char 0)))
+
+	   ;;FIXME::have option to turn this off
+	   (dotimes (i width)
+	     (add-char x y
+		       ;; 0
+		       (code-char
+			(case width
+			  (1 0) ;;a null block
+			  (2 (case i
+			       (0 (load-time-value (char-code #\{)))
+			       (otherwise (load-time-value (char-code #\})))))
+			  ;;FIXME::does this ever occur? characters wider than 3?
+			  (otherwise (+ i 90))))
+		       win) ;;FIXME::magically adding a null character
+	     (advance)))
 	   ;;(error "what char? ~s" (char-code char))
 	   )))))
 (defun next-8 (n)

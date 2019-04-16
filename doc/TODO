@@ -1,0 +1,4 @@
+;;render unicode, specifically japanese
+;; ->use vecto or something. the super fast text grid might be overkill.
+;; -> tack on unicode characters after rendering to the super fast text grid?
+;;be able to reload lem without errors
