@@ -2,3 +2,9 @@
 ;; ->use vecto or something. the super fast text grid might be overkill.
 ;; -> tack on unicode characters after rendering to the super fast text grid?
 ;;be able to reload lem without errors
+;;fix wide characters for ncurses-clone
+;;does lem have line wrapping?
+;;cursor position is based on character widths?
+;;but window position is not?
+;;character width depends on where it is? tab?
+;;add selecting regions with the mouse?
