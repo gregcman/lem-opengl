@@ -63,17 +63,22 @@
 		     (safety 0)))
   (ash attributes 8))
 
+(progn
+  (declaim (inline less-than-256-p))
+  (defun less-than-256-p (n)
+    ;;(> code 256)
+    (zerop (logandc2 n 255))))
+
 (defun gen-glyph (value attributes)
   (declare (optimize (speed 3)
 		     (safety 0)))
   (declare (type glyph-attributes attributes))
   (let ((code (char-code value)))
-    (if ;;(> code 255)
-     (not (zerop (logandc2 code 255)))
-     (make-big-glyph :value value
-		     :attributes attributes)
-     (logior (char-code value)
-	     (ash attributes 8)))))
+    (if (less-than-256-p code)
+	(logior (char-code value)
+		(ash attributes 8))
+	(make-big-glyph :value value
+			:attributes attributes))))
 #+nil
 (progn
   (defun print-glyph (stream glyph)
@@ -340,8 +345,7 @@
   (%ncurses-wscrl (win-data win) n))
 
 (defun ncurses-mvwaddstr (win y x string)
-  (setf (win-cursor-x win) x
-	(win-cursor-y win) y)
+  (ncurses-wmove win y x)
   (ncurses-waddstr win string))
 (defun ncurses-waddstr (win string)
   (dotimes (index (length string))
@@ -380,7 +384,7 @@
 If ch is a tab, newline, or backspace, the cursor is moved appropriately within the window. Backspace moves the cursor one character left; at the left edge of a window it does nothing. Newline does a clrtoeol(), then moves the cursor to the window left margin on the next line, scrolling the window if on the last line). Tabs are considered to be at every eighth column. https://www.mkssoftware.com/docs/man3/curs_addch.3.asp If ch is any control character other than tab, newline, or backspace, it is drawn in ^X notation. Calling winch() after adding a control character does not return the character itself, but instead returns the ^-representation of the control character. (To emit control characters literally, use echochar().) "
   (symbol-macrolet ((x (win-cursor-x win))
 		    (y (win-cursor-y win)))
-    (flet ((advance ()	     
+    (flet ((advance ()
 	     (if (= (max-cursor-x win) x)
 		 (if (= (max-cursor-y win) y)
 		     (cond ((win-scrollok win) ;;scroll the window and reset to x pos
@@ -389,10 +393,14 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 			   (t (progn ;;do nothing
 				)))
 		     ;;reset x and go to next line, theres space
-		     (setf (win-cursor-x win) 0
-			   (win-cursor-y win) (+ 1 y)))
+		     (progn
+		       ;;(print (random 34))
+		       #+nil
+		       (setf (win-cursor-x win) 0
+			     (win-cursor-y win) (+ 1 y))))
 		 ;;its not at the end of line, no one cares
-		 (setf (win-cursor-x win) (+ 1 x)))))
+		 (progn
+		   (setf (win-cursor-x win) (+ 1 x))))))
       (cond 
 	((char= char #\tab)
 	 (setf (win-cursor-x win)
@@ -417,8 +425,18 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	 (add-char x y char win)
 	 (advance))
 	(t
-	 (add-char x y char win)
-	 (advance))))))
+	 (let ((width (char-width-at char x)))
+	   (dotimes (i width)
+	     (add-char x y
+		       (case i
+			 (0 char)
+			 (otherwise #\]))
+		       win)
+	     (advance))))))))
+
+(defun char-width-at (char xpos)
+  (- (lem-base:char-width char xpos)
+     xpos))
 (defun next-8 (n)
   "this is for tabbing, see waddch. its every 8th column"
   (* 8 (+ 1 (floor n 8))))

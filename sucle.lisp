@@ -226,7 +226,9 @@
 	    ;;(print (list name type))
 	    (case type
 	      (:key ;;FIXME::add mouse support?
-	       (cond ((window::character-key-p code))
+	       (cond ((and (window::character-key-p code)
+			   (not (member name '(:space)));;;FIXME::better logic to handle this?
+			   ))
 		     (t
 		      (if (member name
 				  '(:left-shift :left-control :left-super :left-alt
@@ -295,51 +297,57 @@
 	 
 	 (let ((len ncurses-clone::*lines*))
 	   (dotimes (i len)
-	     (let ((array (aref ncurses-clone::*virtual-window* (- len i 1))))
-	       (dotimes (index ncurses-clone::*columns*)
-		 (let* ((glyph (aref array index))
-			(attributes (ncurses-clone::glyph-attributes glyph))
-			(pair (ncurses-clone::ncurses-color-pair (mod attributes 256))))
-		   (flet ((byte/255 (n)
-			    (identity n)))
-		     (let ((realfg
-			    (let ((fg (car pair)))
-			      (if (or
-				   (not pair)
-				   (= -1 fg))
-				  (byte/255
-				   ncurses-clone::*fg-default*) ;;FIXME :cache?
-				  (byte/255
-				   fg))))
-			   (realbg
-			    (let ((bg (cdr pair)))
-			      (if (or
-				   (not pair)
-				   (= -1 bg))
-				  (byte/255
-				   ncurses-clone::*bg-default*) ;;FIXME :cache?
-				  (byte/255
-				   bg)))))
-		       ;;#+nil
-		       (when (logtest ncurses-clone::A_reverse attributes)
-			 (rotatef realfg realbg))
-		       (color (byte/255
-			       (char-code (ncurses-clone::glyph-value glyph)))
-			      realfg
-			      realbg
-			      (byte/255
-			       (text-sub::char-attribute
-				(logtest ncurses-clone::A_bold attributes)
-				(logtest ncurses-clone::A_Underline attributes)
-				t))
-			      index
-			      i))
-		     #+nil
-		     (vertex (floatify x)
-			     (floatify y)
-			     0.0))
-		   #+nil
-		   (incf x)))))))
+	     (let ((array (aref ncurses-clone::*virtual-window* (- len i 1)))
+		   (index 0))
+	       (block out
+		 (do ()
+		     ((>= index ncurses-clone::*columns*))
+		   (let* ((glyph (aref array index))
+			  (glyph-character (ncurses-clone::glyph-value glyph))
+			  (width (ncurses-clone::char-width-at glyph-character index)))
+		     (let* ((attributes (ncurses-clone::glyph-attributes glyph))
+			    (pair (ncurses-clone::ncurses-color-pair (mod attributes 256))))
+		       (let ((realfg
+			      (let ((fg (car pair)))
+				(if (or
+				     (not pair)
+				     (= -1 fg))
+				    ncurses-clone::*fg-default* ;;FIXME :cache?
+				    fg)))
+			     (realbg
+			      (let ((bg (cdr pair)))
+				(if (or
+				     (not pair)
+				     (= -1 bg))
+				    ncurses-clone::*bg-default* ;;FIXME :cache?
+				    bg))))
+			 (when (logtest ncurses-clone::A_reverse attributes)
+			   (rotatef realfg realbg))
+			 (dotimes (offset width)
+			   (color 
+			    ;;FIXME::this is temporary, to chop off extra unicode bits
+			    (let ((code (char-code glyph-character)))
+			      (if (ncurses-clone::less-than-256-p code)
+				  code
+				  (case width
+				    (1 (load-time-value (char-code #\#)))
+				    (otherwise
+				     (cond 
+				       ((= offset 0)
+					(load-time-value (char-code #\{)))
+				       ((= offset (- width 1))
+					(load-time-value (char-code #\})))
+				       (t
+					(load-time-value (char-code #\@))))))))
+			    realfg
+			    realbg
+			    (text-sub::char-attribute
+			     (logtest ncurses-clone::A_bold attributes)
+			     (logtest ncurses-clone::A_Underline attributes)
+			     t)
+			    (+ offset index)
+			    i))))
+		     (incf index width))))))))
        ;;;;write the data out to the texture
        (let ((texture (text-sub::get-text-texture)))
 	 (gl:bind-texture :texture-2d texture)
@@ -363,3 +371,17 @@
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
     (text-sub::draw-fullscreen-quad)))
+
+#+nil
+(let ((width 
+       (lem-base:char-width char 0)))
+
+  ;;FIXME::have option to turn this off
+  (dotimes (i width)
+    (add-char x y
+	      ;; 0
+	      
+	      
+	      win) ;;FIXME::magically adding a null character
+    (advance)))
+	   ;;(error "what char? ~s" (char-code char))
