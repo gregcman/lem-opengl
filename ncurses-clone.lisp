@@ -284,7 +284,8 @@
 	(x (win-cursor-x win)))
     (loop :for i :from y :below (min (+ y n)
 				     (win-lines win))
-       :do (add-char x i char))))
+       :do
+       (add-char x i char win))))
 (defun ncurses-vline (char n)
   (ncurses-wvline *std-scr* char n))
 
