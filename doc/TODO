@@ -16,3 +16,5 @@
 ;;FIXME::what is stdscr supposed to do? is it transparent?
 
 ;;FIXME::correctly render the vertical bar between windows
+;;FIXME::when characters overwrite wide characters
+;;FIXME::resolution blurry when width thin and height tall

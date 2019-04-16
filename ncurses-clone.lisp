@@ -381,6 +381,10 @@
   "the greatest value a cursor's x pos can be"
   (1- (win-cols win)))
 
+(defparameter *widechar-placeholder* (gensym)
+  "The first leftmost x position occupied by the widechar contains the glyph.
+The areas which would be covered by it are filled with this, *widechar-placeholder*")
+
 (defun ncurses-waddch (win char)
   " The addch(), waddch(), mvaddch() and mvwaddch() routines put the character ch into the given window at its current window position, which is then advanced. They are analogous to putchar() in stdio(). If the advance is at the right margin, the cursor automatically wraps to the beginning of the next line. At the bottom of the current scrolling region, if scrollok() is enabled, the scrolling region is scrolled up one line.
 
@@ -430,11 +434,11 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	(t
 	 (let ((width (char-width-at char x)))
 	   (dotimes (i width)
-	     (add-char x y
-		       (case i
-			 (0 char)
-			 (otherwise #\]))
-		       win)
+	     (case i
+	       (0 (add-char x y
+			    char
+			    win))
+	       (otherwise (add-thing x y *widechar-placeholder* win)))
 	     (advance))))))))
 
 (defun char-width-at (char xpos)
@@ -444,13 +448,18 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
   "this is for tabbing, see waddch. its every 8th column"
   (* 8 (+ 1 (floor n 8))))
 (defun add-char (x y value &optional (win *win*))
+  (add-thing x y
+	     (gen-glyph value
+			(logior (win-attr-bits win)
+				*current-attributes*))
+	     win)
+  win)
+
+(defun add-thing (x y thing &optional (win *win*))
   (when (and (> (win-lines win) y -1)
 	     (> (win-cols win) x -1))
-    (let ((new-glyph (gen-glyph value
-				(logior (win-attr-bits win)
-					*current-attributes*))))
-      (setf (ref-grid x y (win-data win))
-	    new-glyph)))
+    (setf (ref-grid x y (win-data win))
+	  thing))
   win)
 
 (defun char-control (char)

@@ -314,52 +314,68 @@
 	       (block out
 		 (do ()
 		     ((>= index ncurses-clone::*columns*))
-		   (let* ((glyph (aref array index))
-			  (glyph-character (ncurses-clone::glyph-value glyph))
-			  (width (ncurses-clone::char-width-at glyph-character index)))
-		     (let* ((attributes (ncurses-clone::glyph-attributes glyph))
-			    (pair (ncurses-clone::ncurses-color-pair (mod attributes 256))))
-		       (let ((realfg
-			      (let ((fg (car pair)))
-				(if (or
-				     (not pair)
-				     (= -1 fg))
-				    ncurses-clone::*fg-default* ;;FIXME :cache?
-				    fg)))
-			     (realbg
-			      (let ((bg (cdr pair)))
-				(if (or
-				     (not pair)
-				     (= -1 bg))
-				    ncurses-clone::*bg-default* ;;FIXME :cache?
-				    bg))))
-			 (when (logtest ncurses-clone::A_reverse attributes)
-			   (rotatef realfg realbg))
-			 (dotimes (offset width)
-			   (color 
-			    ;;FIXME::this is temporary, to chop off extra unicode bits
-			    (let ((code (char-code glyph-character)))
-			      (if (ncurses-clone::less-than-256-p code)
-				  code
-				  (case width
-				    (1 (load-time-value (char-code #\#)))
-				    (otherwise
-				     (cond 
-				       ((= offset 0)
-					(load-time-value (char-code #\{)))
-				       ((= offset (- width 1))
-					(load-time-value (char-code #\})))
-				       (t
-					(load-time-value (char-code #\@))))))))
-			    realfg
-			    realbg
-			    (text-sub::char-attribute
-			     (logtest ncurses-clone::A_bold attributes)
-			     (logtest ncurses-clone::A_Underline attributes)
-			     t)
-			    (+ offset index)
-			    i))))
-		     (incf index width))))))))
+		   (let* ((glyph (aref array index)))
+
+		     ;;This occurs if the widechar is overwritten, but the placeholders still remain.
+		     ;;otherwise it would be skipped.
+		     (when (eq glyph ncurses-clone::*widechar-placeholder*)
+		       (setf glyph ncurses-clone::*clear-glyph*))
+		     
+		     (let* ((glyph-character (ncurses-clone::glyph-value glyph))
+			    (width (ncurses-clone::char-width-at glyph-character index)))
+		       (let* ((attributes (ncurses-clone::glyph-attributes glyph))
+			      (pair (ncurses-clone::ncurses-color-pair (mod attributes 256))))
+			 (let ((realfg
+				(let ((fg (car pair)))
+				  (if (or
+				       (not pair)
+				       (= -1 fg))
+				      ncurses-clone::*fg-default* ;;FIXME :cache?
+				      fg)))
+			       (realbg
+				(let ((bg (cdr pair)))
+				  (if (or
+				       (not pair)
+				       (= -1 bg))
+				      ncurses-clone::*bg-default* ;;FIXME :cache?
+				      bg))))
+			   (when (logtest ncurses-clone::A_reverse attributes)
+			     (rotatef realfg realbg))
+			   (dotimes (offset width)
+			     (block abort-writing
+			       (color 
+				;;FIXME::this is temporary, to chop off extra unicode bits
+				(let ((code (char-code glyph-character)))
+				  (if (ncurses-clone::less-than-256-p code)
+				      code
+				      ;;Draw nice-looking placeholders for unimplemented characters.
+				      ;;1 wide -> #
+				      ;;n wide -> {@...}
+				      (case width
+					(1 (load-time-value (char-code #\#)))
+					(otherwise
+					 (cond 
+					   ((= offset 0)
+					    (load-time-value (char-code #\{)))
+					   (t
+					    (let ((old-thing (aref array (+ index offset))))
+					      (if (eq ncurses-clone::*widechar-placeholder*
+						      old-thing)
+						  (if (= offset (- width 1))
+						      (+ (load-time-value (char-code #\})))
+						      (load-time-value (char-code #\@)))
+						  ;;if its not a widechar-placeholder, the placeholder
+						  ;;was overwritten, so don't draw anything.
+						  (return-from abort-writing)))))))))
+				realfg
+				realbg
+				(text-sub::char-attribute
+				 (logtest ncurses-clone::A_bold attributes)
+				 (logtest ncurses-clone::A_Underline attributes)
+				 t)
+				(+ offset index)
+				i)))))
+		       (incf index width)))))))))
        ;;;;write the data out to the texture
        (let ((texture (text-sub::get-text-texture)))
 	 (gl:bind-texture :texture-2d texture)
