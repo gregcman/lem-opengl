@@ -31,24 +31,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;glyphs stored as either a struct, a class, or an integer
 
-#+nil
+;;;glyphs either stored as a class/struct or an integer
 (struct-to-clos:struct->class
- (defstruct glyph
+ (defstruct big-glyph
    value
    attributes))
 
 (deftype glyph () `(unsigned-byte ,(+ 8 8 3)))
 (deftype glyph-attributes () `(unsigned-byte ,(+ 8 3)))
 (defun glyph-value (glyph)
-  (declare (type glyph glyph))
-  (declare (optimize (speed 3)
-		     (safety 0)))
-  (code-char (logand glyph (utility::etouq (1- (ash 1 8))))))
+  (etypecase glyph
+    (glyph
+     (locally
+	 (declare (type glyph glyph)
+		  (optimize (speed 3)
+			    (safety 0)))
+       (code-char (logand glyph (utility::etouq (1- (ash 1 8)))))))
+    (big-glyph (big-glyph-value glyph))))
 (defun glyph-attributes (glyph)
-  (declare (type glyph glyph))
-  (declare (optimize (speed 3)
-		     (safety 0)))
-  (ash glyph -8))
+  (etypecase glyph
+    (glyph
+     (locally (declare (type glyph glyph)
+		       (optimize (speed 3)
+				 (safety 0)))
+       (ash glyph -8)))
+    (big-glyph (big-glyph-attributes glyph))))
 
 (defun prepare-attributes-for-glyph (attributes)
   (declare (type glyph-attributes attributes))
@@ -60,11 +67,13 @@
   (declare (optimize (speed 3)
 		     (safety 0)))
   (declare (type glyph-attributes attributes))
-  #+nil
-  (make-glyph :value value
-	      :attributes attributes)
-  (logior (char-code value)
-	  (ash attributes 8)))
+  (let ((code (char-code value)))
+    (if ;;(> code 255)
+     (not (zerop (logandc2 code 255)))
+     (make-big-glyph :value value
+		     :attributes attributes)
+     (logior (char-code value)
+	     (ash attributes 8)))))
 #+nil
 (progn
   (defun print-glyph (stream glyph)
@@ -408,35 +417,19 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	 (add-char x y char win)
 	 (advance))
 	(t
-	 (let ((width 
-		(lem-base:char-width char 0)))
-
-	   ;;FIXME::have option to turn this off
-	   (dotimes (i width)
-	     (add-char x y
-		       ;; 0
-		       (code-char
-			(case width
-			  (1 0) ;;a null block
-			  (2 (case i
-			       (0 (load-time-value (char-code #\{)))
-			       (otherwise (load-time-value (char-code #\})))))
-			  ;;FIXME::does this ever occur? characters wider than 3?
-			  (otherwise (+ i 90))))
-		       win) ;;FIXME::magically adding a null character
-	     (advance)))
-	   ;;(error "what char? ~s" (char-code char))
-	   )))))
+	 (add-char x y char win)
+	 (advance))))))
 (defun next-8 (n)
   "this is for tabbing, see waddch. its every 8th column"
   (* 8 (+ 1 (floor n 8))))
 (defun add-char (x y value &optional (win *win*))
   (when (and (> (win-lines win) y -1)
 	     (> (win-cols win) x -1))
-    (setf (ref-grid x y (win-data win))
-	  (gen-glyph value
-		     (logior (win-attr-bits win)
-			     *current-attributes*))))
+    (let ((new-glyph (gen-glyph value
+				(logior (win-attr-bits win)
+					*current-attributes*))))
+      (setf (ref-grid x y (win-data win))
+	    new-glyph)))
   win)
 
 (defun char-control (char)
