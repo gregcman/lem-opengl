@@ -39,7 +39,7 @@
    :height (floor (* ncurses-clone::*lines*
 		     *glyph-height*))
    :title "lem is an editor for Common Lisp"
-   :resizable nil))
+   :resizable t))
 
 (defparameter *last-scroll* 0)
 (defparameter *scroll-difference* 0)
@@ -199,6 +199,24 @@
       (lem:scroll-up (* *scroll-speed* scroll))
       (lem:redraw-display))))
 (defun input-events ()
+  ;;(print (list window::*control* window::*alt* window::*super*))
+  ;;unicode input
+  (dolist (press window::*char-keys*)
+    (destructuring-bind (byte mods) press
+      (let ((key (code-to-key byte)))
+	(lem:send-event
+	 (lem:make-key
+	  :sym (lem:key-sym key)
+	  :ctrl (or (lem:key-ctrl key)
+		    (logtest window::+control+ mods))
+	  :shift (or (lem:key-shift key)
+		     ;;window::*shift* ;;FIXME::why is this here?
+		     )
+	  :meta (or (lem:key-meta key)
+		    (logtest window::+alt+ mods))
+	  :super (or (lem:key-super key)
+		     (logtest window::+super+ mods)))))))
+  ;;control key input, such as Tab, delete, enter
   (let ((array (window::control-state-jp-or-repeat window::*control-state*)))
     (declare (type window::mouse-keyboard-input-array array))
     (dotimes (code 128)
@@ -207,38 +225,24 @@
 	  (multiple-value-bind (name type) (window::back-value code)
 	    ;;(print (list name type))
 	    (case type
-	      (:key
-	       (if (window::character-key-p code)
-		   (multiple-value-bind (byte)
-		       (character-modifier-bits:character-modifier-bits
-			(char-code (char-downcase (code-char code)))
-			window::*shift*
-			window::*control*
-			nil;;window::*alt* ;;FIXME -> makes M-X not M-x
-			window::*super*)
-		     (let ((key (code-to-key byte)))
-		       (lem:send-event
-			(lem:make-key
-			 :sym (lem:key-sym key)
-			 :ctrl (or (lem:key-ctrl key)
-				   window::*control*)
-			 :shift (or (lem:key-shift key)
-					;  window::*shift*
-				    )
-			 :meta (or (lem:key-meta key)
-				   window::*alt*)
-			 :super (or (lem:key-super key)
-				    window::*super*)))))
-		   (let ((key (get-sym-from-glfw3-code name)))
-		     (if key
-			 (lem:send-event (lem:make-key
-					  :sym key
-					  :meta window::*alt*
-					  :super window::*super*
-					  :shift window::*shift*
-					  :ctrl window::*control*))
-			 (format *error-output*
-				 "~s key unimplemented" name))))))))))))
+	      (:key ;;FIXME::add mouse support?
+	       (cond ((window::character-key-p code))
+		     (t
+		      (if (member name
+				  '(:left-shift :left-control :left-super :left-alt
+				    :right-shift :right-control :right-super :right-alt))
+			  ;;FIXME::more efficient test?
+			  nil ;;;ignore the modifier keys for shift, super, alt, control
+			  (let ((key (get-sym-from-glfw3-code name)))
+			    (if key
+				(lem:send-event (lem:make-key
+						 :sym key
+						 :meta window::*alt*
+						 :super window::*super*
+						 :shift window::*shift*
+						 :ctrl window::*control*))
+				(format *error-output*
+					"~s key unimplemented" name))))))))))))))
 
 (defun render-stuff ()
   #+nil

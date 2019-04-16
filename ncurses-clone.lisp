@@ -407,7 +407,10 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	((standard-char-p char)
 	 (add-char x y char win)
 	 (advance))
-	(t (error "what char? ~s" (char-code char)))))))
+	(t (add-char x y 65 win)
+	   (advance)
+	   ;;(error "what char? ~s" (char-code char))
+	   )))))
 (defun next-8 (n)
   "this is for tabbing, see waddch. its every 8th column"
   (* 8 (+ 1 (floor n 8))))
