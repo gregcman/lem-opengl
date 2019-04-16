@@ -8,3 +8,6 @@
 ;;but window position is not?
 ;;character width depends on where it is? tab?
 ;;add selecting regions with the mouse?
+
+;;lem has lexcial variables found in lem.lisp that are named "once" which set only once. disable?
+;;FIXME::what is stdscr supposed to do? is it transparent?

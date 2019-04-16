@@ -259,7 +259,10 @@
   ;;(remove-win win)
   )
 
-(defparameter *std-scr* (ncurses-newwin 25 80 0 0))
+(defparameter *std-scr* nil)
+(defun reset-standard-screen ()
+  (setf *std-scr* (ncurses-newwin *lines* *columns* 0 0)))
+(reset-standard-screen)
 
 ;;(defun ncurses-wscrl (win n))
 ;;https://linux.die.net/man/3/scrollok
