@@ -17,7 +17,9 @@
 	ncurses-clone::*lines* (floor h *glyph-height*))
   ;;(ncurses-clone::reset-standard-screen)
   (ncurses-clone::with-virtual-window-lock
-    (ncurses-clone::ncurses-wresize ncurses-clone::*std-scr* h w)
+    (ncurses-clone::ncurses-wresize ncurses-clone::*std-scr*
+				    ncurses-clone::*lines*
+				    ncurses-clone::*columns*)
     #+nil
     (setf ncurses-clone::*virtual-window*
 	  (ncurses-clone::make-virtual-window))))
@@ -26,7 +28,7 @@
 (defun input-loop (&optional (editor-thread lem-sucle::*editor-thread*))
   (setf ncurses-clone::*columns* 80
 	ncurses-clone::*lines* 25)
-  (setf application::*main-subthread-p* nil)
+  ;;(setf application::*main-subthread-p* t)
   (application::main
    (lambda ()
      (block out

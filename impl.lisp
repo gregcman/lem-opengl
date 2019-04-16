@@ -23,6 +23,12 @@
    height
    lock))
 
+(set-pprint-dispatch
+ 'ncurses-view
+ (lambda (stream obj)
+   (print (ncurses-view-scrwin obj) stream)
+   (print (ncurses-view-modeline-scrwin obj) stream)))
+
 (defparameter *editor-thread* nil)
 (defmethod lem-if:invoke ((implementation sucle) function)
   (when (or (null *editor-thread*)
@@ -156,7 +162,7 @@
 
 (defun attribute-to-bits (attribute-or-name)
   (let ((attribute (lem:ensure-attribute attribute-or-name nil))
-        (cursorp (eq attribute-or-name 'cursor)))
+        (cursorp (eq attribute-or-name 'lem:cursor)))
     (if (null attribute)
         0
         (or (lem::attribute-%internal-value attribute)
@@ -229,11 +235,13 @@
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   (with-view-lock view
     ;#+nil ;;;FIXME
-    (let ((attr (attribute-to-bits 'modeline)))
+    (let ((attr (attribute-to-bits 'lem:modeline)))
       (;;charms/ll:attron
        ncurses-clone::ncurses-attron
        attr)
-      #+nil ;;FIXME:: disabling 
+      ;;#+nil ;;FIXME:: disabling
+      ;;(print view)
+      ;;(print ncurses-clone::*std-scr*)
       (when (and (ncurses-view-modeline-scrwin view)
 		 (< 0 (ncurses-view-x view)))
 	(;;charms/ll:move
@@ -242,8 +250,10 @@
 	 (1- (ncurses-view-x view)))
 	(;;charms/ll:vline
 	 ncurses-clone::ncurses-vline
-	 (char-code #\space)
+	 #\space		    
 	 (1+ (ncurses-view-height view))))
+      ;;(print view)
+      ;;(print ncurses-clone::*std-scr*)
       (;;charms/ll:attroff
        ncurses-clone::ncurses-attroff
        attr)

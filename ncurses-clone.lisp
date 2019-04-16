@@ -266,6 +266,9 @@
   `(bt:with-recursive-lock-held (*virtual-window-lock*)
      ,@body))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;Some functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;(defun ncurses-wscrl (win n))
 ;;https://linux.die.net/man/3/scrollok
