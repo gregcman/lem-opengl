@@ -2,8 +2,11 @@
 ;; ->use vecto or something. the super fast text grid might be overkill.
 ;; -> tack on unicode characters after rendering to the super fast text grid?
 ;;be able to reload lem without errors
+;; -> actually just never close lem. figuring out how to tear it down and up again seems too hard for now.
 ;;fix wide characters for ncurses-clone
+;; -> for now, it just renders placeholders
 ;;does lem have line wrapping?
+;; -> seemingly, no, the line wrapping feature of ncurses is not used?
 ;;cursor position is based on character widths?
 ;;but window position is not?
 ;;character width depends on where it is? tab?
@@ -11,3 +14,5 @@
 
 ;;lem has lexcial variables found in lem.lisp that are named "once" which set only once. disable?
 ;;FIXME::what is stdscr supposed to do? is it transparent?
+
+;;FIXME::correctly render the vertical bar between windows
