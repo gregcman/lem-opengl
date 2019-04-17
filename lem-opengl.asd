@@ -13,7 +13,9 @@
 	       ;;#:opengl-immediate
 	       ;;#:character-modifier-bits
 	       #:uncommon-lisp
-	       #:livesupport)
+	       #:livesupport
+
+	       #:sucle)
   :serial t
   :components ((:file "package")
 	       (:file "ncurses-clone")

@@ -46,6 +46,7 @@
 (defparameter *last-scroll* 0)
 (defparameter *scroll-difference* 0)
 (defparameter *scroll-speed* 3)
+(defparameter *run-sucle* t)
 (defun per-frame (editor-thread out-token)
   (declare (ignorable editor-thread))
   (application::on-session-change *saved-session*
@@ -66,15 +67,22 @@
   (application::getfnc 'virtual-window)
   (application::getfnc 'event-queue)
   (application:poll-app)
+  (when *run-sucle*
+    (unwind-protect
+	 (application::with-quit-token ()
+	   (funcall sucle::*sucle-app-function*))
+      (setf *run-sucle* nil)
+      (window:get-mouse-out)))
   (let ((newscroll (floor window::*scroll-y*)))
     (setf *scroll-difference* (- newscroll *last-scroll*))
     (setf *last-scroll* newscroll))
-
+  
   (glhelp:set-render-area 0 0 window:*width* window:*height*)
   ;;(gl:clear-color 0.0 0.0 0.0 0.0)
   ;;(gl:clear :color-buffer-bit)
   (gl:polygon-mode :front-and-back :fill)
   (gl:disable :cull-face)
+  (gl:disable :depth-test)
   (gl:disable :blend)
 
   (render-stuff)
