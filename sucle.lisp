@@ -308,7 +308,11 @@
 	   (lem:make-key
 	    :sym (lem:key-sym key)
 	    :ctrl (or (lem:key-ctrl key)
-		      (logtest window::+control+ mods))
+		      (logtest window::+control+ mods)
+		      (window:skey-p (window::keyval :escape))
+		      ;;FIXME:: escape used as substitute for control, specifically windows.
+		      ;;see below for same info.
+		      )
 	    :shift (or (lem:key-shift key)
 		       ;;window::*shift* ;;FIXME::why is this here?
 		       )
@@ -332,7 +336,10 @@
 		     (t
 		      (if (member name
 				  '(:left-shift :left-control :left-super :left-alt
-				    :right-shift :right-control :right-super :right-alt))
+				    :right-shift :right-control :right-super :right-alt
+				    :escape ;;FIXME::escape used as substitute for control,
+				    ;;specifically for windows
+				    ))
 			  ;;FIXME::more efficient test?
 			  nil ;;;ignore the modifier keys for shift, super, alt, control
 			  (let ((key (get-sym-from-glfw3-code name)))
@@ -489,7 +496,7 @@
 			    0
 			    (application::getfnc 'application::w)
 			    (application::getfnc 'application::h))
-    ;#+nil
+    #+nil
     (progn
       (gl:enable :blend)
       (gl:blend-func :src-alpha :one-minus-src-alpha))

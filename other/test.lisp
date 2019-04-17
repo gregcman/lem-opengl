@@ -4,6 +4,10 @@
  (lambda ()
    (lem:load-theme "misterioso")))
 
+(lem:define-command forward2 (&optional (n 1)) ("p")
+  (lem:forward-char 1)
+  (lem-paredit-mode:paredit-forward n))
+
 (defun start-lem ()
   (let ((lem::*in-the-editor* nil))
     ;;(lem:main nil)
@@ -25,6 +29,9 @@
 				     :test 'string=)))
     (progn
       (lem:define-key lem:*global-keymap* "C-/" 'lem:undo)
+      (lem:define-key lem-paredit-mode:*paredit-mode-keymap* "C-k" 'lem:kill-sexp)
+      (lem:define-key lem-lisp-mode:*lisp-mode-keymap* "C-k" 'lem:kill-sexp)
+      (lem:define-key lem-paredit-mode:*paredit-mode-keymap* ")" 'forward2)
       (lem:define-key lem.listener-mode:*listener-mode-keymap* "C-Down"
 	'lem.listener-mode:listener-next-input)
       (lem:define-key lem.listener-mode:*listener-mode-keymap* "C-Up"

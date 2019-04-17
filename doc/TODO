@@ -25,3 +25,5 @@
 ;;FIXME::multithreading problems? lem send-event?
 ;;just got rid of lem:send-event and called in the same thread. multithreading problem?
 ;;FIXME::lisp repl flashing when entering on the last char?
+;;FIXME::off center mouse pointer
+;;FIXME::The control button does not seem to work on windows
