@@ -32,7 +32,10 @@
   (background ;;"#3a3a3a" ;;
 	      "#2d3743"
 	      )
-  (cursor :background "#415160") ;;
+  (cursor :background "#415160"
+	  ;;FIXME::what is the correct foreground? ;;not perfect, not same as modeline background,
+	  ;;but good enough?
+	  :foreground "#212931") ;;
   (region :background "#2d4948" :foreground "#e1e1e0") ;;
   (modeline :background "#212931" :foreground "#eeeeec") ;;
   (modeline-inactive :background "#878787" :foreground "#eeeeec");;
