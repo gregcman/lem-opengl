@@ -104,6 +104,7 @@
       (lem:send-abort-event editor-thread t))))
 (defparameter *output* *standard-output*)
 (defparameter *mouse-clicked-at-last* nil)
+(defparameter *point-at-last* nil)
 (defparameter *marking* nil)
 (defun left-click-event ()
   (let* ((x (floor window::*mouse-x*
@@ -120,6 +121,7 @@
 	  (window::skey-p
 	   (window::mouseval :left)
 	   window::*control-state*))
+	 
 	 (press-coord-change
 	  (let ((coord (list x y)))
 	    (if (not (equal coord
@@ -132,43 +134,53 @@
 	 (different (or (and pressing
 			     press-coord-change)
 			just-released
-			just-pressed)))
+			just-pressed))
+	 (point-coord-change
+	  (progn
+	    (when (or pressing just-pressed)
+	      ;;This sets the point of the currently selected window to the
+	      ;;position of the mouse
+	      (find-window-cursor x y))
+	    (let ((point (lem:current-point)))
+	      (if (or (not *point-at-last*)
+		      (not (lem:point= point
+				       *point-at-last*)))
+		  (progn
+		    ;;(print (list *point-at-last* point))
+		    (setf *point-at-last*
+			  (lem:copy-point point))
+		    t)
+		  nil)))))
+    ;;FIXME::better logic? comments?
+    
     (when different
-      (lem:send-event
+      (funcall
        (mouse-event-proc 
 	pressing
 	x
 	y)))
-    (when pressing
-      #+nil
-      (print (list (lem:current-point)
-		   (lem:buffer-mark (lem:current-buffer))))
-      ;;#+nil
-   ;; #+nil
-      (lem:send-event
-       (lambda ()
-	 (find-window-cursor x y)))
-      ;;#+nil
-      (progn
-	(when just-pressed
-	  (lem:buffer-mark-cancel (lem:current-buffer)))
-	(when (and (not *marking*)
-		   press-coord-change)
-	  ;;beginning to mark
-	  ;;(print 3434)
-	  (lem:send-event
-	   (lambda ()
-	     (lem:set-current-mark (lem:current-point))
-	     ;;(lem-base:region-end)
-	     ;;(lem:redraw-display)
-	     ))
-	  (setf *marking* t))))
     (when just-released
       (setf *marking* nil))
+    ;;TODO::handle selections across multiple windows?
+    (when just-pressed
+      ;;(print "cancelling")
+      (lem:buffer-mark-cancel (lem:current-buffer))
+      (setf *marking* nil))
+    (when (and
+	   pressing
+	   (not *marking*)
+	   (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
+	   point-coord-change ;;selecting a single char should not start marking
+	   )
+      ;;beginning to mark
+      ;;(print 3434)
+      (lem:set-current-mark (lem:current-point))
+	 ;;(lem-base:region-end)
+	 ;;(lem:redraw-display)
+	 
+      (setf *marking* t))
     (when different
-      (lem:send-event
-       (lambda ()
-	 (lem:redraw-display))))))
+      (lem:redraw-display))))
 
 ;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
 (defvar *dragging-window* ())

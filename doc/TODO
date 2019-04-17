@@ -19,3 +19,8 @@
 ;;FIXME::when characters overwrite wide characters
 ;;FIXME::resolution blurry when width thin and height tall
 ;;FIXME::don't use 'virtual window', use *std-scr*?
+
+;;Noob mode-> z undo x delete c copy v paste keys, region selecting with the mouse
+
+;;FIXME::multithreading problems? lem send-event?
+;;just got rid of lem:send-event and called in the same thread. multithreading problem?
