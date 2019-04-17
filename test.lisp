@@ -3,7 +3,10 @@
   (let ((lem::*in-the-editor* nil))
     ;;(lem:main nil)
     ;;#+nil
-    (lem:lem "/home/imac/Documents/common-lisp/sucle.lisp")
+    (progn
+      (lem:define-key lem:*global-keymap* "C-/" 'lem:undo)
+      (lem:lem "/home/imac/Documents/common-lisp/sucle.lisp")
+      (lem:send-event (lambda () (lem-paredit-mode:paredit-mode))))
     (lem-sucle::input-loop)))
 
 (defparameter *packages* nil)
@@ -30,5 +33,3 @@
     (search prefix string
 	    :start1 0 :end1 len
 	    :start2 0 :end2 (min len (length string)))))
-
-(lem:define-key lem:*global-keymap* "C-/" 'lem:undo)
