@@ -8,6 +8,10 @@
   (let ((lem::*in-the-editor* nil))
     ;;(lem:main nil)
     ;;#+nil
+    (lem:add-hook lem:*find-file-hook*
+		  (lambda (buffer)
+		    (when (eq (lem:buffer-major-mode buffer) 'lem-lisp-mode:lisp-mode)
+		      (lem:change-buffer-mode buffer 'lem-paredit-mode:paredit-mode t))))
     (setf lem.term::*ansi-color-names-vector*
 	  ;;from misterioso
 	  (mapcar 'lem:parse-color
@@ -21,6 +25,12 @@
 				     :test 'string=)))
     (progn
       (lem:define-key lem:*global-keymap* "C-/" 'lem:undo)
+      (lem:define-key lem.listener-mode:*listener-mode-keymap* "C-Down"
+	'lem.listener-mode:listener-next-input)
+      (lem:define-key lem.listener-mode:*listener-mode-keymap* "C-Up"
+	'lem.listener-mode:listener-prev-input)
+      (lem:define-key lem:*global-keymap* "Return"
+	'lem.language-mode:newline-and-indent)
       (lem:lem "/home/imac/Documents/common-lisp/sucle.lisp")
       (lem:send-event (lambda () (lem-paredit-mode:paredit-mode))))
     (lem-sucle::input-loop)))
