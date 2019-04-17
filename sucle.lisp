@@ -1,10 +1,5 @@
 (in-package :lem-sucle)
 
-(lem:add-hook
- lem:*before-init-hook*
- (lambda ()
-   (lem:load-theme "emacs-dark")))
-
 (defparameter *glyph-height* 16.0)
 (defparameter *glyph-width* 8.0)
 
@@ -60,7 +55,7 @@
      #+nil
      (lambda (n)
        (values-list
-	(print (mapcar (lambda (x) (utility::floatify x))
+	(print (mapcar (lambda (x) (/ (utility::floatify x) 255.0))
 		       (nbutlast (aref lem.term::*colors* n))))))
      )
     (application::refresh 'virtual-window)

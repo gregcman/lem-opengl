@@ -20,4 +20,7 @@
                (:file "term")
 	       (:file "keys")
 	       (:file "impl")
-               (:file "sucle")))
+               (:file "sucle")
+	       (:module "other"
+			:components
+			((:file "test")))))
