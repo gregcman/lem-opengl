@@ -16,7 +16,8 @@
 				       ;;above were from ansi-color-names-vector
 				       ;;https://github.com/jwiegley/emacs-release/blob/master/etc/themes/misterioso-theme.el
 				       "#878787" "#eeeeec" "#415160" "#2d4948"
-				       "#212931" "#729fcf" "#23d7d7" "#ffad29")
+				       "#212931" "#729fcf" "#23d7d7" "#ffad29"
+				       "#e67128")
 				     :test 'string=)))
     (progn
       (lem:define-key lem:*global-keymap* "C-/" 'lem:undo)
