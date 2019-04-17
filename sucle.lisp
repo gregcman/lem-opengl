@@ -104,6 +104,11 @@
 (defparameter *mouse-clicked-at-last* nil)
 (defparameter *point-at-last* nil)
 (defparameter *marking* nil)
+
+(defun same-buffer-points (a b)
+  (eq 
+   (lem:point-buffer a)
+   (lem:point-buffer b)))
 (defun left-click-event ()
   ;;#+nil
   (let ((x (floor window::*mouse-x*
@@ -150,15 +155,14 @@
 	   ;;(print "cancelling")
 	   (lem:buffer-mark-cancel (lem:current-buffer))
 	   (setf *marking* nil))
-	 (let ((point-coord-change		
+	 (let ((last-point *point-at-last*)
+	       (point-coord-change		
 		(let ((point (lem:current-point)))
 		  (if (or (not *point-at-last*)
 			  (not
 			   (and
 			    ;;make sure they are in the same buffer
-			    (eq 
-			     (lem:point-buffer point)
-			     (lem:point-buffer *point-at-last*))
+			    (same-buffer-points point *point-at-last*)
 			    ;;then check whether they are equal
 			    (lem:point= point
 					*point-at-last*))))
@@ -176,7 +180,15 @@
 		  )
 	     ;;beginning to mark
 	     ;;(print 3434)
-	     (lem:set-current-mark (lem:current-point))
+	     (let ((current-point (lem:current-point)))
+	       (if (and
+		    (not (null last-point))
+		    (same-buffer-points current-point last-point))		
+		   (lem:set-current-mark last-point)
+		   (progn
+		     ;;FIXME? when does this happen? when the last point is null or
+		     ;;exists in a different buffer? allow buffer-dependent selection?
+		     (lem:set-current-mark current-point))))
 	     ;;(lem-base:region-end)
 	     ;;(lem:redraw-display)
 	     
