@@ -30,3 +30,5 @@
     (search prefix string
 	    :start1 0 :end1 len
 	    :start2 0 :end2 (min len (length string)))))
+
+(lem:define-key lem:*global-keymap* "C-/" 'lem:undo)

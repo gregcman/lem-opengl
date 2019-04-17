@@ -28,7 +28,7 @@
 (defun input-loop (&optional (editor-thread lem-sucle::*editor-thread*))
   (setf ncurses-clone::*columns* 80
 	ncurses-clone::*lines* 25)
-  ;;(setf application::*main-subthread-p* t)
+  (setf application::*main-subthread-p* nil)
   (application::main
    (lambda ()
      (block out
@@ -37,7 +37,9 @@
 	     (let ((out-token (list "good" "bye")))
 	       (catch out-token
 		 (loop
-		    (per-frame editor-thread out-token))))
+		    (livesupport:update-repl-link)
+		    (livesupport:continuable
+		      (per-frame editor-thread out-token)))))
 	   (exit-editor (c) (return-from out c))))))
    :width (floor (* ncurses-clone::*columns*
 		    *glyph-width*))
@@ -88,7 +90,8 @@
 	  (throw out-token nil))
 	(resize-event)
 	(scroll-event)
-	(input-events)	
+	(input-events)
+	;;#+nil
 	(left-click-event)
 	#+nil
 	(let ((event))
@@ -107,80 +110,84 @@
 (defparameter *point-at-last* nil)
 (defparameter *marking* nil)
 (defun left-click-event ()
-  (let* ((x (floor window::*mouse-x*
-		   *glyph-width*))
-	 (y (floor window::*mouse-y*
-		   *glyph-height*))
-	 (just-pressed (window::skey-j-p
+  ;;#+nil
+  (let ((x (floor window::*mouse-x*
+		  *glyph-width*))
+	(y (floor window::*mouse-y*
+		  *glyph-height*))
+	(just-pressed (window::skey-j-p
+		       (window::mouseval :left)
+		       window::*control-state*))
+	(just-released (window::skey-j-r
 			(window::mouseval :left)
 			window::*control-state*))
-	 (just-released (window::skey-j-r
-			 (window::mouseval :left)
-			 window::*control-state*))
-	 (pressing 
-	  (window::skey-p
-	   (window::mouseval :left)
-	   window::*control-state*))
+	(pressing 
+	 (window::skey-p
+	  (window::mouseval :left)
+	  window::*control-state*)))
+    (funcall ;;lem:send-event
+     (lambda ()
+       (let* ((press-coord-change
+	       (let ((coord (list x y)))
+		 (if (not (equal coord
+				 *mouse-clicked-at-last*))
+		     (progn (setf *mouse-clicked-at-last* coord)
+			    t)
+		     nil)))
+	      ;;'different' is used to track whether changes happened, and whether or not
+	      ;;things should be updated
+	      (different (or (and pressing
+				  press-coord-change)
+			     just-released
+			     just-pressed)))
+	 ;;FIXME::better logic? comments?
 	 
-	 (press-coord-change
-	  (let ((coord (list x y)))
-	    (if (not (equal coord
-			    *mouse-clicked-at-last*))
-		(progn (setf *mouse-clicked-at-last* coord)
-		       t)
-		nil)))
-	 ;;'different' is used to track whether changes happened, and whether or not
-	 ;;things should be updated
-	 (different (or (and pressing
-			     press-coord-change)
-			just-released
-			just-pressed))
-	 (point-coord-change
-	  (progn
-	    (when (or pressing just-pressed)
-	      ;;This sets the point of the currently selected window to the
-	      ;;position of the mouse
-	      (find-window-cursor x y))
-	    (let ((point (lem:current-point)))
-	      (if (or (not *point-at-last*)
-		      (not (lem:point= point
-				       *point-at-last*)))
-		  (progn
-		    ;;(print (list *point-at-last* point))
-		    (setf *point-at-last*
-			  (lem:copy-point point))
-		    t)
-		  nil)))))
-    ;;FIXME::better logic? comments?
-    
-    (when different
-      (funcall
-       (mouse-event-proc 
-	pressing
-	x
-	y)))
-    (when just-released
-      (setf *marking* nil))
-    ;;TODO::handle selections across multiple windows?
-    (when just-pressed
-      ;;(print "cancelling")
-      (lem:buffer-mark-cancel (lem:current-buffer))
-      (setf *marking* nil))
-    (when (and
-	   pressing
-	   (not *marking*)
-	   (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
-	   point-coord-change ;;selecting a single char should not start marking
-	   )
-      ;;beginning to mark
-      ;;(print 3434)
-      (lem:set-current-mark (lem:current-point))
-	 ;;(lem-base:region-end)
-	 ;;(lem:redraw-display)
-	 
-      (setf *marking* t))
-    (when different
-      (lem:redraw-display))))
+	 (when different
+	   (funcall
+	    (mouse-event-proc 
+	     pressing
+	     x
+	     y)))
+	 (when just-released
+	   (setf *marking* nil))
+	 ;;TODO::handle selections across multiple windows?
+	 (when just-pressed
+	   ;;(print "cancelling")
+	   (lem:buffer-mark-cancel (lem:current-buffer))
+	   (setf *marking* nil))
+	 (let ((point-coord-change		
+		(let ((point (lem:current-point)))
+		  (if (or (not *point-at-last*)
+			  (not
+			   (and
+			    ;;make sure they are in the same buffer
+			    (eq 
+			     (lem:point-buffer point)
+			     (lem:point-buffer *point-at-last*))
+			    ;;then check whether they are equal
+			    (lem:point= point
+					*point-at-last*))))
+		      (progn
+			;;(print (list *point-at-last* point))
+			(setf *point-at-last*
+			      (lem:copy-point point))
+			t)
+		      nil))))
+	   (when (and
+		  pressing
+		  (not *marking*)
+		  (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
+		  point-coord-change ;;selecting a single char should not start marking
+		  )
+	     ;;beginning to mark
+	     ;;(print 3434)
+	     (lem:set-current-mark (lem:current-point))
+	     ;;(lem-base:region-end)
+	     ;;(lem:redraw-display)
+	     
+	     (setf *marking* t)))
+	 (when different
+	   (lem:redraw-display)))))))
 
 ;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
 (defvar *dragging-window* ())
@@ -196,19 +203,6 @@
           (lem:window-width  window)
           (lem:window-height window)))
 
-(defun find-window-cursor (x1 y1)
-  (find-if
-   (lambda (o)
-     (multiple-value-bind (x y w h) (mouse-get-window-rect o)
-       (cond
-	 ;; move cursor
-	 ((and (<= x x1 (+ x w -1)) (<= y y1 (+ y h -2)))
-	  (setf (lem:current-window) o)
-	  (mouse-move-to-cursor o (- x1 x) (- y1 y))
-	  t)
-	 (t nil))))
-   (lem:window-list)))
-
 (defun mouse-event-proc (state x1 y1)
   (lambda ()
     (cond
@@ -220,15 +214,16 @@
             (multiple-value-bind (x y w h) (mouse-get-window-rect o)
               (cond
                 ;; vertical dragging window
+		#+nil
                 ((and press (= y1 (- y 1)) (<= x x1 (+ x w -1)))
                  (setf *dragging-window* (list o 'y))
                  t)
                 ;; horizontal dragging window
+		#+nil
                 ((and press (= x1 (- x 1)) (<= y y1 (+ y h -2)))
                  (setf *dragging-window* (list o 'x))
                  t)
                 ;; move cursor
-		#+nil
                 ((and (<= x x1 (+ x w -1)) (<= y y1 (+ y h -2)))
                  (setf (lem:current-window) o)
                  (mouse-move-to-cursor o (- x1 x) (- y1 y))
@@ -237,6 +232,7 @@
                 (t nil))))
           (lem:window-list))))
       ;; button1 up
+      #+nil
       ((null state)
        (let ((o (first *dragging-window*)))
          (when (lem:windowp o)
@@ -410,6 +406,12 @@
 		     
 		     (let* ((glyph-character (ncurses-clone::glyph-value glyph))
 			    (width (ncurses-clone::char-width-at glyph-character index)))
+
+		       ;;FIXME::for some reason, when resizing really quickly,
+		       ;;this can get screwed up, so bail out
+		       (when (<= (+ 1 ncurses-clone::*columns*)
+				 (+ width index))
+			 (return-from out))
 		       (let* ((attributes (ncurses-clone::glyph-attributes glyph))
 			      (pair (ncurses-clone::ncurses-color-pair (mod attributes 256))))
 			 (let ((realfg

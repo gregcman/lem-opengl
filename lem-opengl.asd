@@ -11,8 +11,9 @@
 	       #:utility
 	       #:text-subsystem
 	       ;;#:opengl-immediate
-	       #:character-modifier-bits
-	       #:uncommon-lisp)
+	       ;;#:character-modifier-bits
+	       #:uncommon-lisp
+	       #:livesupport)
   :serial t
   :components ((:file "package")
 	       (:file "ncurses-clone")
