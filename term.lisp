@@ -257,7 +257,7 @@
     (return-from term-init nil))
   ;;(charms/ll:start-color)
   ;; enable default color code (-1)
-  #+win32(charms/ll:use-default-colors)
+  ;;#+win32(charms/ll:use-default-colors)
   (init-colors 256
 	       )
   ;;;FIXME: find out what all these options do
@@ -289,7 +289,7 @@
     (return-from term-init nil))
   (charms/ll:start-color)
   ;; enable default color code (-1)
-  #+win32(charms/ll:use-default-colors)
+  ;;#+win32(charms/ll:use-default-colors)
   (init-colors charms/ll:*colors*)
   (set-default-color nil nil)
   "Normally, the tty driver buffers typed characters until a newline or carriage return is typed. The cbreak routine disables line buffering and erase/kill character-processing (interrupt and flow control characters are unaffected), making characters typed by the user immediately available to the program. The nocbreak routine returns the terminal to normal (cooked) mode.
