@@ -46,7 +46,7 @@
 (defparameter *last-scroll* 0)
 (defparameter *scroll-difference* 0)
 (defparameter *scroll-speed* 3)
-(defparameter *run-sucle* t)
+(defparameter *run-sucle* nil)
 (defun per-frame (editor-thread out-token)
   (declare (ignorable editor-thread))
   (application::on-session-change *saved-session*
@@ -133,119 +133,131 @@
 	 (window::skey-p
 	  (window::mouseval :left)
 	  window::*control-state*)))
-    (funcall ;;lem:send-event
-     (lambda ()
-       (let* ((press-coord-change
-	       (let ((coord (list x y)))
-		 (if (not (equal coord
-				 *mouse-clicked-at-last*))
-		     (progn (setf *mouse-clicked-at-last* coord)
-			    t)
-		     nil)))
-	      ;;'different' is used to track whether changes happened, and whether or not
-	      ;;things should be updated
-	      (different (or (and pressing
-				  press-coord-change)
-			     just-released
-			     just-pressed)))
-	 ;;FIXME::better logic? comments?
-	 
-	 (when different
-	   (funcall
-	    (mouse-event-proc 
-	     pressing
-	     x
-	     y)))
-	 (when just-released
-	   (setf *marking* nil))
-	 ;;TODO::handle selections across multiple windows?
-	 (when just-pressed
-	   ;;(print "cancelling")
-	   (lem:buffer-mark-cancel (lem:current-buffer))
-	   (setf *marking* nil))
-	 (let ((last-point *point-at-last*)
-	       (point-coord-change		
-		(let ((point (lem:current-point)))
-		  (if (or (not *point-at-last*)
-			  (not
-			   (and
-			    ;;make sure they are in the same buffer
-			    (same-buffer-points point *point-at-last*)
-			    ;;then check whether they are equal
-			    (lem:point= point
-					*point-at-last*))))
-		      (progn
-			;;(print (list *point-at-last* point))
-			(setf *point-at-last*
-			      (lem:copy-point point))
-			t)
-		      nil))))
-	   (when (and
-		  pressing
-		  (not *marking*)
-		  (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
-		  point-coord-change ;;selecting a single char should not start marking
-		  )
-	     ;;beginning to mark
-	     ;;(print 3434)
-	     (let ((current-point (lem:current-point)))
-	       (if (and
-		    (not (null last-point))
-		    (same-buffer-points current-point last-point))		
-		   (lem:set-current-mark last-point)
+    (let* ((press-coord-change
+	    (let ((coord (list x y)))
+	      (if (not (equal coord
+			      *mouse-clicked-at-last*))
+		  (progn (setf *mouse-clicked-at-last* coord)
+			 t)
+		  nil)))
+	   ;;'different' is used to track whether changes happened, and whether or not
+	   ;;things should be updated
+	   (different (or (and pressing
+			       press-coord-change)
+			  just-released
+			  just-pressed)))
+      ;;FIXME::better logic? comments?
+      (when (or different)
+	(when pressing
+	  (let ((new-window (switch-to-window-mouse
+			     x
+			     y)))
+	    (when new-window
+	      (lem:redraw-display) ;;FIXME::this occurs below as well.
+	      ))))
+      ;;switch to window that the mouse is hovering over, and find that file
+      (when window::*dropped-files*
+	(switch-to-window-mouse x y)
+	(dolist (file window::*dropped-files*)
+	  (lem:find-file file))
+	(lem:redraw-display);;FIXME::this occers below as well. set a flag instead?
+	)
+      (when just-released
+	(setf *marking* nil))
+      ;;TODO::handle selections across multiple windows?
+      (when just-pressed
+	;;(print "cancelling")
+	(lem:buffer-mark-cancel (lem:current-buffer))
+	(setf *marking* nil))
+      (let ((last-point *point-at-last*)
+	    (point-coord-change		
+	     (let ((point (lem:current-point)))
+	       (if (or (not *point-at-last*)
+		       (not
+			(and
+			 ;;make sure they are in the same buffer
+			 (same-buffer-points point *point-at-last*)
+			 ;;then check whether they are equal
+			 (lem:point= point
+				     *point-at-last*))))
 		   (progn
-		     ;;FIXME? when does this happen? when the last point is null or
-		     ;;exists in a different buffer? allow buffer-dependent selection?
-		     (lem:set-current-mark current-point))))
-	     ;;(lem-base:region-end)
-	     ;;(lem:redraw-display)
-	     
-	     (setf *marking* t)))
-	 (when different
-	   (lem:redraw-display)))))))
+		     ;;(print (list *point-at-last* point))
+		     (setf *point-at-last*
+			   (lem:copy-point point))
+		     t)
+		   nil))))
+	(when (and
+	       pressing
+	       (not *marking*)
+	       (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
+	       point-coord-change ;;selecting a single char should not start marking
+	       )
+	  ;;beginning to mark
+	  ;;(print 3434)
+	  (let ((current-point (lem:current-point)))
+	    (if (and
+		 (not (null last-point))
+		 (same-buffer-points current-point last-point))		
+		(lem:set-current-mark last-point)
+		(progn
+		  ;;FIXME? when does this happen? when the last point is null or
+		  ;;exists in a different buffer? allow buffer-dependent selection?
+		  (lem:set-current-mark current-point))))
+	  ;;(lem-base:region-end)
+	  ;;(lem:redraw-display)
+	  
+	  (setf *marking* t)))
+      (when different
+	(lem:redraw-display)))))
 
 ;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
 (defvar *dragging-window* ())
 
 (defun mouse-move-to-cursor (window x y)
-  (lem:move-point (lem:current-point) (lem::window-view-point window))
-  (lem:move-to-next-virtual-line (lem:current-point) y)
-  (lem:move-to-virtual-line-column (lem:current-point)
-                                   x))
+  (let ((point (lem:current-point)))
+    ;;view-point is in the very upper right
+    (lem:move-point point (lem::window-view-point window))
+    (lem:move-to-next-virtual-line point y)
+    (lem:move-to-virtual-line-column point x)))
 (defun mouse-get-window-rect (window)
   (values (lem:window-x      window)
           (lem:window-y      window)
           (lem:window-width  window)
           (lem:window-height window)))
 
+(defun switch-to-window-mouse (x1 y1 &optional (press nil))
+  ""
+  (declare (ignorable press))
+  (find-if
+   (lambda(o)
+     (multiple-value-bind (x y w h) (mouse-get-window-rect o)
+       (cond
+	 ;; vertical dragging window
+	 #+nil
+	 ((and press (= y1 (- y 1)) (<= x x1 (+ x w -1)))
+	  (setf *dragging-window* (list o 'y))
+	  t)
+	 ;; horizontal dragging window
+	 #+nil
+	 ((and press (= x1 (- x 1)) (<= y y1 (+ y h -2)))
+	  (setf *dragging-window* (list o 'x))
+	  t)
+	 ;; move cursor
+	 ((and (<= x x1 (+ x w -1)) (<= y y1 (+ y h -2)))
+	  (setf (lem:current-window) o)
+	  (mouse-move-to-cursor o (- x1 x) (- y1 y))
+	  t)
+	 (t nil))))
+   (lem:window-list)))
+
+#+nil
 (defun mouse-event-proc (state x1 y1)
   (lambda ()
     (cond
       ;; button1 down
       ((eq state t)
        (let ((press state))
-         (find-if
-          (lambda(o)
-            (multiple-value-bind (x y w h) (mouse-get-window-rect o)
-              (cond
-                ;; vertical dragging window
-		#+nil
-                ((and press (= y1 (- y 1)) (<= x x1 (+ x w -1)))
-                 (setf *dragging-window* (list o 'y))
-                 t)
-                ;; horizontal dragging window
-		#+nil
-                ((and press (= x1 (- x 1)) (<= y y1 (+ y h -2)))
-                 (setf *dragging-window* (list o 'x))
-                 t)
-                ;; move cursor
-                ((and (<= x x1 (+ x w -1)) (<= y y1 (+ y h -2)))
-                 (setf (lem:current-window) o)
-                 (mouse-move-to-cursor o (- x1 x) (- y1 y))
-                 (lem:redraw-display)
-                 t)
-                (t nil))))
-          (lem:window-list))))
+         (switch-to-window-mouse x1 y1 press)))
       ;; button1 up
       #+nil
       ((null state)

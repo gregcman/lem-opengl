@@ -38,8 +38,12 @@
 	'lem.listener-mode:listener-prev-input)
       (lem:define-key lem:*global-keymap* "Return"
 	'lem.language-mode:newline-and-indent)
-      (lem:lem "/home/imac/Documents/common-lisp/sucle.lisp")
-      (lem:send-event (lambda () (lem-paredit-mode:paredit-mode))))
+      (lem:lem)
+      (lem:send-event
+       (lambda ()
+	 (lem:find-file (merge-pathnames "other/example.lisp"
+					 (asdf:system-source-directory :lem-opengl)))
+	 (lem-paredit-mode:paredit-mode))))
     (lem-sucle::input-loop)))
 
 (in-package :lem-user)
