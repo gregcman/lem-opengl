@@ -24,6 +24,7 @@
   (setf ncurses-clone::*columns* 80
 	ncurses-clone::*lines* 25)
   (setf application::*main-subthread-p* nil)
+  (set-glyph-dimensions 8 16)
   (application::main
    (lambda ()
      (block out
@@ -42,6 +43,18 @@
 		     *glyph-height*))
    :title "lem is an editor for Common Lisp"
    :resizable t))
+
+(defun set-glyph-dimensions (w h)
+  ;;Set the pixel dimensions of a 1 wide by 1 high character
+  (setf *glyph-width* w)
+  (setf text-sub::*block-width* w)
+  (setf *glyph-height* h)
+  (setf text-sub::*block-height* h)
+  (progn
+    ;;FIXME::Better way to organize this? as of now manually determining that
+    ;;these two depend on the *block-height* and *block-width* variables
+    (application::refresh 'text-sub::render-normal-text-indirection)
+    (application::refresh 'virtual-window)))
 
 (defparameter *last-scroll* 0)
 (defparameter *scroll-difference* 0)
