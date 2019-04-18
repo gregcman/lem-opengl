@@ -108,6 +108,7 @@
 	(scroll-event)
 	(input-events)
 	;;#+nil
+	(calculate-cursor-coordinate)
 	(left-click-event)
 	#+nil
 	(let ((event))
@@ -122,7 +123,7 @@
       (declare (ignore c))
       (lem:send-abort-event editor-thread t))))
 (defparameter *output* *standard-output*)
-(defparameter *mouse-clicked-at-last* nil)
+(defparameter *mouse-last-position* nil)
 (defparameter *point-at-last* nil)
 (defparameter *marking* nil)
 
@@ -131,22 +132,26 @@
    (lem:point-buffer a)
    (lem:point-buffer b)))
 
+(defparameter *grid-mouse-x* nil)
+(defparameter *grid-mouse-y* nil)
+(defun calculate-cursor-coordinate ()
+  ;;For some reason, the coordinate of the mouse is off by 1,1?
+  (setf *grid-mouse-x*
+	(floor (- window::*mouse-x* 1)
+	       *glyph-width*))
+  (setf *grid-mouse-y*
+	(floor (- 
+		window::*mouse-y*
+		;;There's a little space between the edge of the window and the area lem uses,
+		;;since the window coordinates are not necessary multiples of the glyph size
+		;;This causes the y position of the cursor to become messed up, if not accounted for
+		(mod window::*height*
+		     *glyph-height*)
+		1)
+	       *glyph-height*)))
 (defun left-click-event ()
   ;;#+nil
-  (let (;;For some reason, the coordinate of the mouse is off by 1,1?
-	(x (floor (- window::*mouse-x* 1)
-		  *glyph-width*))
-	(y (floor (- 
-		   window::*mouse-y*
-		   ;;There's a little space between the edge of the window and the area lem uses,
-		   ;;since the window coordinates are not necessary multiples of the glyph size
-		   ;;This causes the y position of the cursor to become messed up, if not accounted for
-		   (mod window::*height*
-			*glyph-height*)
-		   1)
-		  *glyph-height*))
-	
-	(just-pressed (window::skey-j-p
+  (let ((just-pressed (window::skey-j-p
 		       (window::mouseval :left)
 		       window::*control-state*))
 	(just-released (window::skey-j-r
@@ -156,31 +161,37 @@
 	 (window::skey-p
 	  (window::mouseval :left)
 	  window::*control-state*)))
-    (let* ((press-coord-change
-	    (let ((coord (list x y)))
-	      (if (not (equal coord
-			      *mouse-clicked-at-last*))
-		  (progn (setf *mouse-clicked-at-last* coord)
-			 t)
-		  nil)))
+    (let* ((coord-change
+	     (let ((coord (list *grid-mouse-x* *grid-mouse-y*)))
+	       (if (not (equal coord
+			       *mouse-last-position*))
+		   (progn (setf *mouse-last-position* coord)
+			  t)
+		   nil)))
 	   ;;'different' is used to track whether changes happened, and whether or not
 	   ;;things should be updated
-	   (different (or (and pressing
-			       press-coord-change)
-			  just-released
-			  just-pressed)))
+	   (different (or
+		       ;;pressing and having a coord change = dragging
+		       (and pressing
+			    coord-change)
+		       just-released
+		       just-pressed)))
       ;;FIXME::better logic? comments?
       (when (or different)
 	(when pressing
-	  (let ((new-window (switch-to-window-mouse
-			     x
-			     y)))
-	    (when new-window
+	  (let ((window (detect-mouse-window-intersection)))
+	    (when window
+	      (setf (lem:current-window) window)
+	      (move-window-cursor-to-mouse window)
 	      (lem:redraw-display) ;;FIXME::this occurs below as well.
 	      ))))
       ;;switch to window that the mouse is hovering over, and find that file
       (when window::*dropped-files*
-	(switch-to-window-mouse x y)
+	(let ((window
+	       (detect-mouse-window-intersection)))
+	  (when window
+	    (setf (lem:current-window) window)
+	    (move-window-cursor-to-mouse window)))
 	(unless
 	    ;;Do not drop a file into the minibuffer
 	    (eq lem::*minibuf-window*
@@ -240,6 +251,11 @@
 ;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
 (defvar *dragging-window* ())
 
+(defun move-window-cursor-to-mouse (window &optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*))
+  (let ((x (lem:window-x window))
+	(y (lem:window-y window)))
+    (mouse-move-to-cursor window (- x1 x) (- y1 y))))
+
 (defun mouse-move-to-cursor (window x y)
   (let ((point (lem:current-point)))
     ;;view-point is in the very upper right
@@ -252,9 +268,12 @@
           (lem:window-width  window)
           (lem:window-height window)))
 
-(defun switch-to-window-mouse (x1 y1 &optional (press nil))
-  ""
-  (declare (ignorable press))
+(defun detect-mouse-window-intersection
+    (&optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*)
+       ;; &optional (press nil)
+	    )
+  ;;find the window which the coordinates x1 and y1 intersect at and return the window
+  ;;and intersection type
   (let ((windows (lem:window-list)))
     #+nil;;FIXME::what does this variable do in lem?
     (when lem::*minibuffer-calls-window*
@@ -264,6 +283,7 @@
     (find-if
      (lambda (window)
        (multiple-value-bind (x y w h) (mouse-get-window-rect window)
+	 #+nil
 	 (when (eq window lem::*minibuf-window*)
 	   ;;(print (list x y w h x1 y1))
 	   )
@@ -278,15 +298,12 @@
 	   ((and press (= x1 (- x 1)) (<= y y1 (+ y h -2)))
 	    (setf *dragging-window* (list window 'x))
 	    t)
-	   ;; move cursor
 	   ((and (and (<= x x1) (< x1 (+ x w)))
 		 (and (<= y y1) (< y1
 				   (+ (+ y h)
 				      (if (lem::window-use-modeline-p window)
 					  -1
 					  0)))))
-	    (setf (lem:current-window) window)
-	    (mouse-move-to-cursor window (- x1 x) (- y1 y))
 	    t)
 	   (t nil))))
      windows)))
