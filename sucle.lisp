@@ -117,12 +117,23 @@
   (eq 
    (lem:point-buffer a)
    (lem:point-buffer b)))
+(defun yoffset ()
+ )
 (defun left-click-event ()
   ;;#+nil
-  (let ((x (floor window::*mouse-x*
+  (let (;;For some reason, the coordinate of the mouse is off by 1,1?
+	(x (floor (- window::*mouse-x* 1)
 		  *glyph-width*))
-	(y (floor window::*mouse-y*
+	(y (floor (- 
+		   window::*mouse-y*
+		   ;;There's a little space between the edge of the window and the area lem uses,
+		   ;;since the window coordinates are not necessary multiples of the glyph size
+		   ;;This causes the y position of the cursor to become messed up, if not accounted for
+		   (mod window::*height*
+			*glyph-height*)
+		   1)
 		  *glyph-height*))
+	
 	(just-pressed (window::skey-j-p
 		       (window::mouseval :left)
 		       window::*control-state*))
@@ -514,8 +525,8 @@
     (glhelp::bind-default-framebuffer)
     (glhelp:set-render-area 0
 			    0
-			    (application::getfnc 'application::w)
-			    (application::getfnc 'application::h))
+			    window::*width*
+			    window::*height*)
     #+nil
     (progn
       (gl:enable :blend)
