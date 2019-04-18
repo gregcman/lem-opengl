@@ -117,8 +117,7 @@
   (eq 
    (lem:point-buffer a)
    (lem:point-buffer b)))
-(defun yoffset ()
- )
+
 (defun left-click-event ()
   ;;#+nil
   (let (;;For some reason, the coordinate of the mouse is off by 1,1?
