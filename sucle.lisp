@@ -58,7 +58,7 @@
 
 (defparameter *last-scroll* 0)
 (defparameter *scroll-difference* 0)
-(defparameter *scroll-speed* 3)
+(defparameter *scroll-speed* 5)
 (defparameter *run-sucle* nil)
 (defun per-frame (editor-thread out-token)
   (declare (ignorable editor-thread))
@@ -181,8 +181,12 @@
       ;;switch to window that the mouse is hovering over, and find that file
       (when window::*dropped-files*
 	(switch-to-window-mouse x y)
-	(dolist (file window::*dropped-files*)
-	  (lem:find-file file))
+	(unless
+	    ;;Do not drop a file into the minibuffer
+	    (eq lem::*minibuf-window*
+		(lem:current-window))
+	  (dolist (file window::*dropped-files*)
+	    (lem:find-file file)))
 	(lem:redraw-display);;FIXME::this occers below as well. set a flag instead?
 	)
       (when just-released
@@ -251,27 +255,41 @@
 (defun switch-to-window-mouse (x1 y1 &optional (press nil))
   ""
   (declare (ignorable press))
-  (find-if
-   (lambda(o)
-     (multiple-value-bind (x y w h) (mouse-get-window-rect o)
-       (cond
-	 ;; vertical dragging window
-	 #+nil
-	 ((and press (= y1 (- y 1)) (<= x x1 (+ x w -1)))
-	  (setf *dragging-window* (list o 'y))
-	  t)
-	 ;; horizontal dragging window
-	 #+nil
-	 ((and press (= x1 (- x 1)) (<= y y1 (+ y h -2)))
-	  (setf *dragging-window* (list o 'x))
-	  t)
-	 ;; move cursor
-	 ((and (<= x x1 (+ x w -1)) (<= y y1 (+ y h -2)))
-	  (setf (lem:current-window) o)
-	  (mouse-move-to-cursor o (- x1 x) (- y1 y))
-	  t)
-	 (t nil))))
-   (lem:window-list)))
+  (let ((windows (lem:window-list)))
+    #+nil;;FIXME::what does this variable do in lem?
+    (when lem::*minibuffer-calls-window*
+      (push lem::*minibuffer-calls-window* windows))
+    (when lem::*minibuf-window*
+      (push lem::*minibuf-window* windows))
+    (find-if
+     (lambda (window)
+       (multiple-value-bind (x y w h) (mouse-get-window-rect window)
+	 (when (eq window lem::*minibuf-window*)
+	   ;;(print (list x y w h x1 y1))
+	   )
+	 (cond
+	   ;; vertical dragging window
+	   #+nil
+	   ((and press (= y1 (- y 1)) (<= x x1 (+ x w -1)))
+	    (setf *dragging-window* (list window 'y))
+	    t)
+	   ;; horizontal dragging window
+	   #+nil
+	   ((and press (= x1 (- x 1)) (<= y y1 (+ y h -2)))
+	    (setf *dragging-window* (list window 'x))
+	    t)
+	   ;; move cursor
+	   ((and (and (<= x x1) (< x1 (+ x w)))
+		 (and (<= y y1) (< y1
+				   (+ (+ y h)
+				      (if (lem::window-use-modeline-p window)
+					  -1
+					  0)))))
+	    (setf (lem:current-window) window)
+	    (mouse-move-to-cursor window (- x1 x) (- y1 y))
+	    t)
+	   (t nil))))
+     windows)))
 
 #+nil
 (defun mouse-event-proc (state x1 y1)
