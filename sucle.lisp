@@ -203,10 +203,10 @@
 	  (let ((window (detect-mouse-window-intersection)))
 	    (when window
 	      (when (centered-between window)
+		(setf (lem:current-window) window)
 		(move-window-cursor-to-mouse window)
 		;;FIXME::Clicking on the minibuffer is causing errors.
 		;;Are the wrong points being used?
-		(setf (lem:current-window) window)
 
 		(when (eq *mouse-mode* :marking)
 		  (when (not (eq *marking-window*
