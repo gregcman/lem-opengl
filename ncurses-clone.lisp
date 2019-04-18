@@ -321,13 +321,14 @@
     (setf (win-data win)
 	  new-grid)))
 
+#+nil
 (defparameter *mouse-enabled-p* nil)
-
+#+nil
 (defun ncurses-wattron (win attr)
   (let ((old (win-attr-bits win)))
     (setf (win-attr-bits win)
 	  (logior attr old))))
-
+#+nil
 (defun ncurses-wattroff (win attr)
   (let ((old (win-attr-bits win)))
     (setf (win-attr-bits win)
@@ -493,7 +494,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	      win))
   win)
 
-(defun ncurses-wnoutrefresh (&optional (win *win*) (cursor-mode *cursor-state*))
+(defun ncurses-wnoutrefresh (&optional (win *win*) ;;(cursor-mode *cursor-state*)
+			       )
   ;;;FIXME:: follow https://linux.die.net/man/3/wnoutrefresh with "touching"
   ;;;different lines
   (when (win-clearok win)
@@ -503,8 +505,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
     (let ((grid (win-data win))
 	  (xwin (win-x win))
 	  (ywin (win-y win))
-	  (cursor-x (win-cursor-x win))
-	  (cursor-y (win-cursor-y win))
+	  ;;(cursor-x (win-cursor-x win))
+	  ;;(cursor-y (win-cursor-y win))
 	  (columns
 	   (win-cols *std-scr*)
 	   ;;(length (aref *virtual-window* 0))
@@ -522,6 +524,7 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 			 (> lines ydest -1))
 
 		;;reverse the color of the cursor, if applicable
+		#+nil
 		(when (and
 		       (not (eq :invisible cursor-mode))
 		       (= cursor-x x)
@@ -543,7 +546,9 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 (defun ncurses-doupdate ()
   (setf *update-p* t)) ;;;when copied to opengl buffer, set again to nil
 
+#+nil
 (defparameter *cursor-state* :normal)
+#+nil
 (defun ncurses-curs-set (value)
   "The curs_set routine sets the cursor state is set to invisible, normal, or very visible for visibility equal to 0, 1, or 2 respectively. If the terminal supports the visibility requested, the previous cursor state is returned; otherwise, ERR is returned."
   (setf *cursor-state*

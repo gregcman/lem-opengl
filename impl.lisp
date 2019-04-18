@@ -242,7 +242,7 @@
 
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   (with-view-lock view
-    ;#+nil ;;;FIXME
+    ;;#+nil ;;;FIXME
     (let ((attr (attribute-to-bits 'lem:modeline)))
       #+nil
       (;;charms/ll:attron
@@ -282,10 +282,11 @@
     
     (;;charms/ll:wnoutrefresh
      ncurses-clone::ncurses-wnoutrefresh
-     (ncurses-view-scrwin view)))
-  )
+     (ncurses-view-scrwin view))))
 
 (defmethod lem-if:update-display ((implementation sucle))
+  ;;FIXME::why does this do nothing?
+  #+nil
   (flet ((render-window (window)
 	   (let ((view (lem:window-view window)))
 	     (with-view-lock view
@@ -316,7 +317,8 @@
     #+nil
     (map nil #'render-window (lem:window-list))
     ;;#+nil
-    (render-window (lem:current-window)))
+    ;;(render-window (lem:current-window))
+    )
   (;;charms/ll:doupdate
    ncurses-clone::ncurses-doupdate))
 

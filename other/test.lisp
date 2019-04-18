@@ -54,10 +54,13 @@
   (background ;;"#3a3a3a" ;;
 	      "#2d3743"
 	      )
-  (cursor :background "#415160"
+  (cursor :background "#212931"
 	  ;;FIXME::what is the correct foreground? ;;not perfect, not same as modeline background,
 	  ;;but good enough?
-	  :foreground "#212931") ;;
+	  :foreground "#415160"
+	  ;;FIXME::background and foreground are switched because
+	  ;;I can't figure out the correct way to detect cursors in impl.lisp
+	  ) ;;
   (region :background "#2d4948" :foreground "#e1e1e0") ;;
   (modeline :background "#212931" :foreground "#eeeeec") ;;
   (modeline-inactive :background "#878787" :foreground "#eeeeec");;
@@ -71,7 +74,7 @@
   (syntax-type-attribute :foreground "#34cae2") ;;
   (syntax-variable-attribute :foreground "#dbdb95") ;;
   (syntax-warning-attribute :foreground "#dbdb95" :bold-p t))
-
+(in-package :lem-sucle)
 
 (defparameter *packages* nil)
 (defun find-lem-package ()
