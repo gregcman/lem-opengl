@@ -181,8 +181,9 @@
 	(when pressing
 	  (let ((window (detect-mouse-window-intersection)))
 	    (when window
+	      (when (centered-between window)
+		(move-window-cursor-to-mouse window))
 	      (setf (lem:current-window) window)
-	      (move-window-cursor-to-mouse window)
 	      (lem:redraw-display) ;;FIXME::this occurs below as well.
 	      ))))
       ;;switch to window that the mouse is hovering over, and find that file
@@ -190,8 +191,7 @@
 	(let ((window
 	       (detect-mouse-window-intersection)))
 	  (when window
-	    (setf (lem:current-window) window)
-	    (move-window-cursor-to-mouse window)))
+	    (setf (lem:current-window) window)))
 	(unless
 	    ;;Do not drop a file into the minibuffer
 	    (eq lem::*minibuf-window*
@@ -262,11 +262,29 @@
     (lem:move-point point (lem::window-view-point window))
     (lem:move-to-next-virtual-line point y)
     (lem:move-to-virtual-line-column point x)))
+#+nil
 (defun mouse-get-window-rect (window)
   (values (lem:window-x      window)
           (lem:window-y      window)
           (lem:window-width  window)
           (lem:window-height window)))
+
+(defun horizontally-between (window &optional (x1 *grid-mouse-x*))
+  (let ((x (lem:window-x window))
+	(w (lem:window-width window)))
+    (and (<= x x1) (< x1 (+ x w)))))
+(defun vertically-between (window &optional (y1 *grid-mouse-y*))
+  (let ((y (lem:window-y window))
+	(h (lem:window-height window)))
+    (and (<= y y1)
+	 (< y1
+	    (+ y h
+	       (if (lem::window-use-modeline-p window)
+		   -1
+		   0))))))
+(defun centered-between (window &optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*))
+  (and (horizontally-between window x1)
+       (vertically-between window y1)))
 
 (defun detect-mouse-window-intersection
     (&optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*)
@@ -280,33 +298,32 @@
       (push lem::*minibuffer-calls-window* windows))
     (when lem::*minibuf-window*
       (push lem::*minibuf-window* windows))
-    (find-if
-     (lambda (window)
-       (multiple-value-bind (x y w h) (mouse-get-window-rect window)
-	 #+nil
-	 (when (eq window lem::*minibuf-window*)
-	   ;;(print (list x y w h x1 y1))
-	   )
-	 (cond
-	   ;; vertical dragging window
-	   #+nil
-	   ((and press (= y1 (- y 1)) (<= x x1 (+ x w -1)))
-	    (setf *dragging-window* (list window 'y))
-	    t)
-	   ;; horizontal dragging window
-	   #+nil
-	   ((and press (= x1 (- x 1)) (<= y y1 (+ y h -2)))
-	    (setf *dragging-window* (list window 'x))
-	    t)
-	   ((and (and (<= x x1) (< x1 (+ x w)))
-		 (and (<= y y1) (< y1
-				   (+ (+ y h)
-				      (if (lem::window-use-modeline-p window)
-					  -1
-					  0)))))
-	    t)
-	   (t nil))))
-     windows)))
+    (block return 
+      (dolist (window windows) 
+	(let ((x (lem:window-x window))
+	      (y (lem:window-y window))) 
+	  #+nil
+	  (when (eq window lem::*minibuf-window*)
+	    ;;(print (list x y w h x1 y1))
+	    )
+	  
+	  (cond
+	    ;; vertical dragging window
+
+	    ((and (= y1 (- y 1))
+		  (horizontally-between window x1))
+	     ;;(setf *dragging-window* (list window 'y))
+	     (return-from return (values window :vertical t)))
+	    ;; horizontal dragging window
+	    
+	    ((and (= x1 (- x 1))
+		  (vertically-between window y1))
+	     ;;(setf *dragging-window* (list window 'x))
+	     (return-from return (values window :horizontal t)))
+	    ((centered-between window x1 y1)
+	     (return-from return (values window :center t)))
+	    (t))))
+      (values nil nil nil))))
 
 #+nil
 (defun mouse-event-proc (state x1 y1)
