@@ -137,6 +137,13 @@
 (defparameter *mouse-last-position* nil)
 (defparameter *point-at-last* nil)
 (defparameter *mouse-mode* nil)
+
+(defparameter *last-clicked-at* nil) ;;to detect double and triple clicks etc...
+(defparameter *point-clicked-at* nil) ;;point representing the starting location in the buffer
+(defparameter *clicked-at-times* 0)
+(defparameter *click-selection-count* 0)
+;;the number of times clicks consecutively at a position,
+;;starting with 1
 (defun reset-mouse-mode ()
   (setf *mouse-mode* nil))
 (defparameter *marking-window* nil)
@@ -175,13 +182,13 @@
 	 (window::skey-p
 	  (window::mouseval :left)
 	  window::*control-state*)))
-    (let* ((coord-change
-	     (let ((coord (list *grid-mouse-x* *grid-mouse-y*)))
-	       (if (not (equal coord
-			       *mouse-last-position*))
-		   (progn (setf *mouse-last-position* coord)
-			  t)
-		   nil)))
+    (let* ((coord (list *grid-mouse-x* *grid-mouse-y*))
+	   (coord-change
+	     (if (not (equal coord
+			     *mouse-last-position*))
+		 (progn (setf *mouse-last-position* coord)
+			t)
+		 nil))
 	   ;;'different' is used to track whether changes happened, and whether or not
 	   ;;things should be updated
 	   (different (or
@@ -229,7 +236,65 @@
       ;;TODO::handle selections across multiple windows?
       (when just-pressed
 	;;(print "cancelling")
-	(lem:buffer-mark-cancel (lem:current-buffer))
+	(if (equal *last-clicked-at* coord)
+	    (incf *clicked-at-times*)
+	    (progn
+	      (setf *last-clicked-at* coord)
+	      (setf *clicked-at-times* 1)))
+	(flet ((cancel-click-selection ()
+		 (lem:buffer-mark-cancel (lem:current-buffer))
+		 (setf *click-selection-count* 0)))
+	  (cond
+	    ((= 1 *clicked-at-times*)
+	     (cancel-click-selection)
+	     (setf *point-clicked-at*
+		   (lem:copy-point (lem:current-point)
+				   :temporary)))
+	    ((< 1 *clicked-at-times*)
+	     ;;(print *clicked-at-times*)
+	     
+	     ;;(lem:save-excursion)
+	     (let ((successp t))
+	       (incf *click-selection-count*)
+	       (let (inside
+		     (on-last-paren nil))
+		 (lem:with-point ((start *point-clicked-at*)
+				  (end *point-clicked-at*))
+		   (handler-case (progn				 
+				   (lem:move-point (lem:current-point) *point-clicked-at*)
+				   (lem:forward-sexp) ;;fails if on a closing paren
+				   (lem:move-point end (lem:current-point))
+				   (lem:backward-sexp) ;;fails at first char in list
+				   (lem:move-point start (lem:current-point))
+				   (setf inside
+					 (and (lem:point<= start *point-clicked-at*)
+					      (lem:point< *point-clicked-at* end))))
+		     (lem:editor-error (c)
+		       (declare (ignorable c))
+		       (setf on-last-paren t)))
+		   (let ((iteration-count *click-selection-count*))
+		     ;;(print (list inside on-last-paren))
+		     (when inside
+		       (decf iteration-count))
+		     (dotimes (i iteration-count)
+		       (handler-case (progn
+				       ;;(lem:save-excursion
+				       (lem:backward-up-list)
+				       )
+			 (lem:editor-error (c)
+			   (declare (ignorable c))
+			   ;;turn this on to select the whole buffer 
+			   ;;(lem::mark-set-whole-buffer)
+			   (setf successp nil)))))
+		   (if successp
+		       (progn
+			 ;;(lem:move-point (lem:current-point) start)
+			 (lem:set-current-mark (lem:copy-point (lem:current-point)
+							       :temporary))
+			 (lem:mark-sexp))
+		       (progn (cancel-click-selection)
+			      (lem:move-point (lem:current-point)
+					      *point-clicked-at*)))))))))
 	(case *mouse-mode*
 	  (:marking (reset-mouse-mode))))
       (let ((last-point *point-at-last*)
@@ -257,7 +322,8 @@
 		     (print (lem-base::buffer-points
 			     (lem:point-buffer point)))
 		     t)
-		   nil))))
+		   (progn
+		     nil)))))
 	(when (and
 	       pressing
 	       (not (eq *mouse-mode* :marking))
