@@ -56,6 +56,9 @@
     (application::refresh 'text-sub::render-normal-text-indirection)
     (application::refresh 'virtual-window)))
 
+(defparameter *redraw-display-p* nil)
+(defun redraw-display ()
+  (setf *redraw-display-p* t))
 (defparameter *last-scroll* 0)
 (defparameter *scroll-difference* 0)
 (defparameter *scroll-speed* 5)
@@ -90,15 +93,6 @@
     (setf *scroll-difference* (- newscroll *last-scroll*))
     (setf *last-scroll* newscroll))
   
-  (glhelp:set-render-area 0 0 window:*width* window:*height*)
-  ;;(gl:clear-color 0.0 0.0 0.0 0.0)
-  ;;(gl:clear :color-buffer-bit)
-  (gl:polygon-mode :front-and-back :fill)
-  (gl:disable :cull-face)
-  (gl:disable :depth-test)
-  (gl:disable :blend)
-
-  (render-stuff)
   (handler-case
       (progn
 	(when window::*status*
@@ -121,11 +115,31 @@
     #+sbcl
     (sb-sys:interactive-interrupt (c)
       (declare (ignore c))
-      (lem:send-abort-event editor-thread t))))
+      (lem:send-abort-event editor-thread t)))
+
+  ;;Flush the changes made to the ncurses-clone display
+  (when *redraw-display-p*
+    (setf *redraw-display-p* nil)
+    (lem:redraw-display))
+  
+  ;;Rendering. Comes after input handling because things could have changed
+  (progn
+    (glhelp:set-render-area 0 0 window:*width* window:*height*)
+    ;;(gl:clear-color 0.0 0.0 0.0 0.0)
+    ;;(gl:clear :color-buffer-bit)
+    (gl:polygon-mode :front-and-back :fill)
+    (gl:disable :cull-face)
+    (gl:disable :depth-test)
+    (gl:disable :blend)
+
+    (render-stuff)))
 (defparameter *output* *standard-output*)
 (defparameter *mouse-last-position* nil)
 (defparameter *point-at-last* nil)
-(defparameter *marking* nil)
+(defparameter *mouse-mode* nil)
+(defun reset-mouse-mode ()
+  (setf *mouse-mode* nil))
+(defparameter *marking-window* nil)
 
 (defun same-buffer-points (a b)
   (eq 
@@ -182,9 +196,18 @@
 	  (let ((window (detect-mouse-window-intersection)))
 	    (when window
 	      (when (centered-between window)
-		(move-window-cursor-to-mouse window))
-	      (setf (lem:current-window) window)
-	      (lem:redraw-display) ;;FIXME::this occurs below as well.
+		(move-window-cursor-to-mouse window)
+		;;FIXME::Clicking on the minibuffer is causing errors.
+		;;Are the wrong points being used?
+		(setf (lem:current-window) window)
+
+		(when (eq *mouse-mode* :marking)
+		  (when (not (eq *marking-window*
+				 window))
+		    (setf *marking-window* window)
+		    (reset-mouse-mode)))
+		
+		(redraw-display)) ;;FIXME::this occurs below as well.
 	      ))))
       ;;switch to window that the mouse is hovering over, and find that file
       (when window::*dropped-files*
@@ -197,16 +220,18 @@
 	    (eq lem::*minibuf-window*
 		(lem:current-window))
 	  (dolist (file window::*dropped-files*)
-	    (lem:find-file file)))
-	(lem:redraw-display);;FIXME::this occers below as well. set a flag instead?
+	    (lem:find-file file))
+	  (redraw-display));;FIXME::this occers below as well. set a flag instead?
 	)
       (when just-released
-	(setf *marking* nil))
+	(case *mouse-mode*
+	  (:marking (reset-mouse-mode))))
       ;;TODO::handle selections across multiple windows?
       (when just-pressed
 	;;(print "cancelling")
 	(lem:buffer-mark-cancel (lem:current-buffer))
-	(setf *marking* nil))
+	(case *mouse-mode*
+	  (:marking (reset-mouse-mode))))
       (let ((last-point *point-at-last*)
 	    (point-coord-change		
 	     (let ((point (lem:current-point)))
@@ -220,13 +245,22 @@
 				     *point-at-last*))))
 		   (progn
 		     ;;(print (list *point-at-last* point))
+		     (when *point-at-last*
+		       (lem:delete-point *point-at-last*))
 		     (setf *point-at-last*
-			   (lem:copy-point point))
+			   (lem:copy-point point
+					   :temporary)
+			   ;;FIXME:: do we want :temporary points?
+			   ;;does it create garbage?
+			   )
+		     #+nil
+		     (print (lem-base::buffer-points
+			     (lem:point-buffer point)))
 		     t)
 		   nil))))
 	(when (and
 	       pressing
-	       (not *marking*)
+	       (not (eq *mouse-mode* :marking))
 	       (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
 	       point-coord-change ;;selecting a single char should not start marking
 	       )
@@ -242,11 +276,10 @@
 		  ;;exists in a different buffer? allow buffer-dependent selection?
 		  (lem:set-current-mark current-point))))
 	  ;;(lem-base:region-end)
-	  ;;(lem:redraw-display)
-	  
-	  (setf *marking* t)))
+	  ;;(redraw-display)
+	  (setf *mouse-mode* :marking)))
       (when different
-	(lem:redraw-display)))))
+	(redraw-display)))))
 
 ;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
 (defvar *dragging-window* ())
@@ -257,11 +290,13 @@
     (mouse-move-to-cursor window (- x1 x) (- y1 y))))
 
 (defun mouse-move-to-cursor (window x y)
-  (let ((point (lem:current-point)))
+  (let ((point (lem:current-point))
+	(view-point (lem::window-view-point window)))
     ;;view-point is in the very upper right
-    (lem:move-point point (lem::window-view-point window))
-    (lem:move-to-next-virtual-line point y)
-    (lem:move-to-virtual-line-column point x)))
+    (when (same-buffer-points point view-point)
+      (lem:move-point point view-point)
+      (lem:move-to-next-virtual-line point y)
+      (lem:move-to-virtual-line-column point x))))
 #+nil
 (defun mouse-get-window-rect (window)
   (values (lem:window-x      window)
@@ -292,6 +327,8 @@
 	    )
   ;;find the window which the coordinates x1 and y1 intersect at and return the window
   ;;and intersection type
+  ;;returns (values window[if found window, otherwise nil] intersection-type)
+  ;;intersection is one of :vertical, :horizontal, :center, or nil
   (let ((windows (lem:window-list)))
     #+nil;;FIXME::what does this variable do in lem?
     (when lem::*minibuffer-calls-window*
@@ -309,21 +346,19 @@
 	  
 	  (cond
 	    ;; vertical dragging window
-
 	    ((and (= y1 (- y 1))
 		  (horizontally-between window x1))
 	     ;;(setf *dragging-window* (list window 'y))
-	     (return-from return (values window :vertical t)))
-	    ;; horizontal dragging window
-	    
+	     (return-from return (values window :vertical)))
+	    ;; horizontal dragging window	    
 	    ((and (= x1 (- x 1))
 		  (vertically-between window y1))
 	     ;;(setf *dragging-window* (list window 'x))
-	     (return-from return (values window :horizontal t)))
+	     (return-from return (values window :horizontal)))
 	    ((centered-between window x1 y1)
-	     (return-from return (values window :center t)))
+	     (return-from return (values window :center)))
 	    (t))))
-      (values nil nil nil))))
+      (values nil nil))))
 
 #+nil
 (defun mouse-event-proc (state x1 y1)
@@ -387,7 +422,8 @@
   (let ((scroll *scroll-difference*))
     (unless (zerop scroll)
       (lem:scroll-up (* *scroll-speed* scroll))
-      (lem:redraw-display))))
+      (redraw-display)
+      )))
 (defun input-events ()
   ;;(print (list window::*control* window::*alt* window::*super*))
   ;;unicode input
