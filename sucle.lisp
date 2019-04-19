@@ -103,6 +103,7 @@
 	(input-events)
 	;;#+nil
 	(calculate-cursor-coordinate)
+	(handle-dropped-files)
 	(left-click-event)
 	#+nil
 	(let ((event))
@@ -166,7 +167,6 @@
 
 (defparameter *window-last-clicked-at* nil)
 (defun left-click-event ()
-  ;;#+nil
   (let ((just-pressed (window::skey-j-p
 		       (window::mouseval :left)
 		       window::*control-state*))
@@ -185,29 +185,48 @@
 		       t)
 		nil)))
       ;;FIXME::better logic? comments?
+      ;;TODO::handle selections across multiple windows?
+      (when just-pressed
+	;;(print "cancelling")
+	(multiple-value-bind (window intersection-type)
+	    (detect-mouse-window-intersection)	  
+	  (cond ((eq intersection-type :center)
+		 (progn
+		   (setf (lem:current-window) window)
+		   (move-window-cursor-to-mouse window)	      
+		   (redraw-display))
+		 (setf *window-last-clicked-at* window))
+		(t (setf *window-last-clicked-at* nil)))
+	  (reset-mouse-mode))
+	(handle-multi-click coord)
+	(handle-multi-click-selection)
+	(case *mouse-mode*
+	  (:marking (reset-mouse-mode))))
+      
       (let ((window *window-last-clicked-at*))
-	(let ((y (- *grid-mouse-y*
-		    (lem:window-y window) ;;is move-window-cursor-to-mouse redundant?
-		    )))
-	  (let ((scroll-down-offset
-		  (cond
-		    ((> 0 y)
-		     y)
-		    ((>= y (rectified-window-height window))
-		     (+ 1 (- y (rectified-window-height window))))
-		    (t 0))))
-	    (when (or
-		   ;;when scrolled by mouse
-		   (and pressing (not (zerop *scroll-difference*)))
-		   ;;when it is scrolled
-		   (and pressing (not (zerop scroll-down-offset)))
-		   ;;when its dragging
-		   (and pressing coord-change))
-	      (lem:scroll-down scroll-down-offset)
-	      (move-window-cursor-to-mouse *window-last-clicked-at*
-					   *grid-mouse-x*
-					   (- *grid-mouse-y* scroll-down-offset))	      
-	      (redraw-display)))))
+	(when (and pressing window)
+	  (let ((y (- *grid-mouse-y*
+		      (lem:window-y window) ;;is move-window-cursor-to-mouse redundant?
+		      )))
+	    (let ((scroll-down-offset
+		   (cond
+		     ((> 0 y)
+		      y)
+		     ((>= y (rectified-window-height window))
+		      (+ 1 (- y (rectified-window-height window))))
+		     (t 0))))
+	      (when (or
+		     ;;when scrolled by mouse
+		     (not (zerop *scroll-difference*))
+		     ;;when it is scrolled
+		     (not (zerop scroll-down-offset))
+		     ;;when its dragging
+		     coord-change)
+		(lem:scroll-down scroll-down-offset)
+		(move-window-cursor-to-mouse *window-last-clicked-at*
+					     *grid-mouse-x*
+					     (- *grid-mouse-y* scroll-down-offset))	      
+		(redraw-display))))))
       #+nil
       (multiple-value-bind (window intersection-type)
 	  (detect-mouse-window-intersection)
@@ -217,25 +236,7 @@
 	    ;;when it's dragging in the window's center area
 	    (progn
 	      (setf (lem:current-window) window)))))
-      (handle-dropped-files)
       (when just-released
-	(case *mouse-mode*
-	  (:marking (reset-mouse-mode))))
-      ;;TODO::handle selections across multiple windows?
-      (when just-pressed
-	;;(print "cancelling")
-	(multiple-value-bind (window intersection-type)
-	    (detect-mouse-window-intersection)	  
-	  (when (eq intersection-type :center)
-	    (progn
-	      (setf (lem:current-window) window)
-	      (move-window-cursor-to-mouse window)	      
-	      (redraw-display))
-
-	    (setf *window-last-clicked-at* window)
-	    (reset-mouse-mode)))
-	(handle-multi-click coord)
-	(handle-multi-click-selection)
 	(case *mouse-mode*
 	  (:marking (reset-mouse-mode))))
       (handle-drag-select-region pressing just-pressed))))
