@@ -41,3 +41,5 @@
 ;;FIXME::lem bug where moving the cursor to a long, wrapping line causes
 ;;the beginning of the line to be forced into view. Then scrolling down with the cursor,
 ;;the cursor can leave the screen. Scrolling on wrapping lines causes window to jump up
+
+;;FIXME::improper window draggin when 3 or more divisions
