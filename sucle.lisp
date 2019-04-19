@@ -135,15 +135,9 @@
     (render-stuff)))
 (defparameter *output* *standard-output*)
 (defparameter *mouse-last-position* nil)
-(defparameter *point-at-last* nil)
+
 (defparameter *mouse-mode* nil)
 
-(defparameter *last-clicked-at* nil) ;;to detect double and triple clicks etc...
-(defparameter *point-clicked-at* nil) ;;point representing the starting location in the buffer
-(defparameter *clicked-at-times* 0)
-(defparameter *click-selection-count* 0)
-;;the number of times clicks consecutively at a position,
-;;starting with 1
 (defun reset-mouse-mode ()
   (setf *mouse-mode* nil))
 (defparameter *marking-window* nil)
@@ -184,11 +178,11 @@
 	  window::*control-state*)))
     (let* ((coord (list *grid-mouse-x* *grid-mouse-y*))
 	   (coord-change
-	     (if (not (equal coord
-			     *mouse-last-position*))
-		 (progn (setf *mouse-last-position* coord)
-			t)
-		 nil))
+	    (if (not (equal coord
+			    *mouse-last-position*))
+		(progn (setf *mouse-last-position* coord)
+		       t)
+		nil))
 	   ;;'different' is used to track whether changes happened, and whether or not
 	   ;;things should be updated
 	   (different (or
@@ -216,136 +210,152 @@
 		
 		(redraw-display)) ;;FIXME::this occurs below as well.
 	      ))))
-      ;;switch to window that the mouse is hovering over, and find that file
-      (when window::*dropped-files*
-	(let ((window
-	       (detect-mouse-window-intersection)))
-	  (when window
-	    (setf (lem:current-window) window)))
-	(unless
-	    ;;Do not drop a file into the minibuffer
-	    (eq lem::*minibuf-window*
-		(lem:current-window))
-	  (dolist (file window::*dropped-files*)
-	    (lem:find-file file))
-	  (redraw-display));;FIXME::this occers below as well. set a flag instead?
-	)
+      (handle-dropped-files)
       (when just-released
 	(case *mouse-mode*
 	  (:marking (reset-mouse-mode))))
       ;;TODO::handle selections across multiple windows?
       (when just-pressed
 	;;(print "cancelling")
-	(if (equal *last-clicked-at* coord)
-	    (incf *clicked-at-times*)
-	    (progn
-	      (setf *last-clicked-at* coord)
-	      (setf *clicked-at-times* 1)))
-	(flet ((cancel-click-selection ()
-		 (lem:buffer-mark-cancel (lem:current-buffer))
-		 (setf *click-selection-count* 0)))
-	  (cond
-	    ((= 1 *clicked-at-times*)
-	     (cancel-click-selection)
-	     (setf *point-clicked-at*
-		   (lem:copy-point (lem:current-point)
-				   :temporary)))
-	    ((< 1 *clicked-at-times*)
-	     ;;(print *clicked-at-times*)
-	     
-	     ;;(lem:save-excursion)
-	     (let ((successp t))
-	       (incf *click-selection-count*)
-	       (let (inside
-		     (on-last-paren nil))
-		 (lem:with-point ((start *point-clicked-at*)
-				  (end *point-clicked-at*))
-		   (handler-case (progn				 
-				   (lem:move-point (lem:current-point) *point-clicked-at*)
-				   (lem:forward-sexp) ;;fails if on a closing paren
-				   (lem:move-point end (lem:current-point))
-				   (lem:backward-sexp) ;;fails at first char in list
-				   (lem:move-point start (lem:current-point))
-				   (setf inside
-					 (and (lem:point<= start *point-clicked-at*)
-					      (lem:point< *point-clicked-at* end))))
-		     (lem:editor-error (c)
-		       (declare (ignorable c))
-		       (setf on-last-paren t)))
-		   (let ((iteration-count *click-selection-count*))
-		     ;;(print (list inside on-last-paren))
-		     (when inside
-		       (decf iteration-count))
-		     (dotimes (i iteration-count)
-		       (handler-case (progn
-				       ;;(lem:save-excursion
-				       (lem:backward-up-list)
-				       )
-			 (lem:editor-error (c)
-			   (declare (ignorable c))
-			   ;;turn this on to select the whole buffer 
-			   ;;(lem::mark-set-whole-buffer)
-			   (setf successp nil)))))
-		   (if successp
-		       (progn
-			 ;;(lem:move-point (lem:current-point) start)
-			 (lem:set-current-mark (lem:copy-point (lem:current-point)
-							       :temporary))
-			 (lem:mark-sexp))
-		       (progn (cancel-click-selection)
-			      (lem:move-point (lem:current-point)
-					      *point-clicked-at*)))))))))
+	(handle-multi-click coord)
+	(handle-multi-click-selection)
 	(case *mouse-mode*
 	  (:marking (reset-mouse-mode))))
-      (let ((last-point *point-at-last*)
-	    (point-coord-change		
-	     (let ((point (lem:current-point)))
-	       (if (or (not *point-at-last*)
-		       (not
-			(and
-			 ;;make sure they are in the same buffer
-			 (same-buffer-points point *point-at-last*)
-			 ;;then check whether they are equal
-			 (lem:point= point
-				     *point-at-last*))))
-		   (progn
-		     ;;(print (list *point-at-last* point))
-		     (when *point-at-last*
-		       (lem:delete-point *point-at-last*))
-		     (setf *point-at-last*
-			   (lem:copy-point point
-					   :temporary)
-			   ;;FIXME:: do we want :temporary points?
-			   ;;does it create garbage?
-			   )
-		     #+nil
-		     (print (lem-base::buffer-points
-			     (lem:point-buffer point)))
-		     t)
-		   (progn
-		     nil)))))
-	(when (and
-	       pressing
-	       (not (eq *mouse-mode* :marking))
-	       (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
-	       point-coord-change ;;selecting a single char should not start marking
-	       )
-	  ;;beginning to mark
-	  ;;(print 3434)
-	  (let ((current-point (lem:current-point)))
-	    (if (and
-		 (not (null last-point))
-		 (same-buffer-points current-point last-point))		
-		(lem:set-current-mark last-point)
-		(progn
-		  ;;FIXME? when does this happen? when the last point is null or
-		  ;;exists in a different buffer? allow buffer-dependent selection?
-		  (lem:set-current-mark current-point))))
-	  ;;(lem-base:region-end)
-	  ;;(redraw-display)
-	  (setf *mouse-mode* :marking)))
-      (when different
-	(redraw-display)))))
+      (handle-drag-select-region pressing just-pressed))))
+
+(defparameter *point-at-last* nil)
+(defun handle-drag-select-region (pressing just-pressed)
+  (let ((last-point *point-at-last*)
+	(point-coord-change		
+	 (let ((point (lem:current-point)))
+	   (if (or (not *point-at-last*)
+		   (not
+		    (and
+		     ;;make sure they are in the same buffer
+		     (same-buffer-points point *point-at-last*)
+		     ;;then check whether they are equal
+		     (lem:point= point
+				 *point-at-last*))))
+	       (progn
+		 ;;(print (list *point-at-last* point))
+		 (when *point-at-last*
+		   (lem:delete-point *point-at-last*))
+		 (setf *point-at-last*
+		       (lem:copy-point point
+				       :temporary)
+		       ;;FIXME:: do we want :temporary points?
+		       ;;does it create garbage?
+		       )
+		 #+nil
+		 (print (lem-base::buffer-points
+			 (lem:point-buffer point)))
+		 t)
+	       (progn
+		 nil)))))
+    (when (and
+	   pressing
+	   (not (eq *mouse-mode* :marking))
+	   (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
+	   point-coord-change ;;selecting a single char should not start marking
+	   )
+      ;;beginning to mark
+      ;;(print 3434)
+      (let ((current-point (lem:current-point)))
+	(if (and
+	     (not (null last-point))
+	     (same-buffer-points current-point last-point))		
+	    (lem:set-current-mark last-point)
+	    (progn
+	      ;;FIXME? when does this happen? when the last point is null or
+	      ;;exists in a different buffer? allow buffer-dependent selection?
+	      (lem:set-current-mark current-point))))
+      ;;(lem-base:region-end)
+      ;;(redraw-display)
+      (setf *mouse-mode* :marking))))
+
+(defun handle-dropped-files ()
+  ;;switch to window that the mouse is hovering over, and find that file
+  (when window::*dropped-files*
+    (let ((window
+	   (detect-mouse-window-intersection)))
+      (when window
+	(setf (lem:current-window) window)))
+    (unless
+	;;Do not drop a file into the minibuffer
+	(eq lem::*minibuf-window*
+	    (lem:current-window))
+      (dolist (file window::*dropped-files*)
+	(lem:find-file file))
+      (redraw-display))))
+
+(defparameter *last-clicked-at* nil) ;;to detect double and triple clicks etc...
+(defparameter *clicked-at-times* 0)
+(defun handle-multi-click (coord)
+  (if (equal *last-clicked-at* coord)
+      (incf *clicked-at-times*)
+      (progn
+	(setf *last-clicked-at* coord)
+	(setf *clicked-at-times* 1))))
+
+(defparameter *point-clicked-at* nil) ;;point representing the starting location in the buffer
+(defparameter *click-selection-count* 0)
+;;the number of times clicks consecutively at a position,
+;;starting with 1
+(defun handle-multi-click-selection ()
+  (flet ((cancel-click-selection ()
+	   (lem:buffer-mark-cancel (lem:current-buffer))
+	   (setf *click-selection-count* 0)))
+    (cond
+      ((= 1 *clicked-at-times*)
+       (cancel-click-selection)
+       (setf *point-clicked-at*
+	     (lem:copy-point (lem:current-point)
+			     :temporary)))
+      ((< 1 *clicked-at-times*)
+       ;;(print *clicked-at-times*)
+       
+       ;;(lem:save-excursion)
+       (let ((successp t))
+	 (incf *click-selection-count*)
+	 (let (inside
+	       (on-last-paren nil))
+	   (lem:with-point ((start *point-clicked-at*)
+			    (end *point-clicked-at*))
+	     (handler-case (progn				 
+			     (lem:move-point (lem:current-point) *point-clicked-at*)
+			     (lem:forward-sexp) ;;fails if on a closing paren
+			     (lem:move-point end (lem:current-point))
+			     (lem:backward-sexp) ;;fails at first char in list
+			     (lem:move-point start (lem:current-point))
+			     (setf inside
+				   (and (lem:point<= start *point-clicked-at*)
+					(lem:point< *point-clicked-at* end))))
+	       (lem:editor-error (c)
+		 (declare (ignorable c))
+		 (setf on-last-paren t)))
+	     (let ((iteration-count *click-selection-count*))
+	       ;;(print (list inside on-last-paren))
+	       (when inside
+		 (decf iteration-count))
+	       (dotimes (i iteration-count)
+		 (handler-case (progn
+				 ;;(lem:save-excursion
+				 (lem:backward-up-list)
+				 )
+		   (lem:editor-error (c)
+		     (declare (ignorable c))
+		     ;;turn this on to select the whole buffer 
+		     ;;(lem::mark-set-whole-buffer)
+		     (setf successp nil)))))
+	     (if successp
+		 (progn
+		   ;;(lem:move-point (lem:current-point) start)
+		   (lem:set-current-mark (lem:copy-point (lem:current-point)
+							 :temporary))
+		   (lem:mark-sexp))
+		 (progn (cancel-click-selection)
+			(lem:move-point (lem:current-point)
+					*point-clicked-at*))))))))))
 
 ;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
 (defvar *dragging-window* ())
