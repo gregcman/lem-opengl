@@ -241,54 +241,46 @@
 	  (:marking (reset-mouse-mode))))
       (handle-drag-select-region pressing just-pressed))))
 
+(defun safe-point= (point-a point-b)
+  (and
+   ;;make sure they are in the same buffer
+   (same-buffer-points point-a point-b)
+   ;;then check whether they are equal
+   (lem:point= point-a point-b)))
+
 (defparameter *point-at-last* nil)
 (defun handle-drag-select-region (pressing just-pressed)
-  (let ((last-point *point-at-last*)
-	(point-coord-change		
-	 (let ((point (lem:current-point)))
-	   (if (or (not *point-at-last*)
-		   (not
-		    (and
-		     ;;make sure they are in the same buffer
-		     (same-buffer-points point *point-at-last*)
-		     ;;then check whether they are equal
-		     (lem:point= point
-				 *point-at-last*))))
-	       (progn
-		 ;;(print (list *point-at-last* point))
-		 (when *point-at-last*
-		   (lem:delete-point *point-at-last*))
-		 (setf *point-at-last*
-		       (lem:copy-point point
-				       :temporary)
-		       ;;FIXME:: do we want :temporary points?
-		       ;;does it create garbage?
-		       )
-		 #+nil
-		 (print (lem-base::buffer-points
-			 (lem:point-buffer point)))
-		 t)
-	       (progn
-		 nil)))))
+  (let* ((last-point *point-at-last*)
+	 (point (lem:current-point))
+	 (point-coord-change
+	  (not (and
+		;;it exists
+		*point-at-last* 
+		;;its the same position as point
+		(safe-point= *point-at-last* point)))))
+    (when point-coord-change
+      (setf *point-at-last*
+	    (lem:copy-point point
+			    :temporary)))
     (when (and
 	   pressing
 	   (not (eq *mouse-mode* :marking))
-	   (not just-pressed) ;;if it was just pressed, there's going to be a point-coord jump
-	   point-coord-change ;;selecting a single char should not start marking
-	   )
+	    ;;if it was just pressed, there's going to be a point-coord jump
+	   (not just-pressed)
+	   ;;selecting a single char should not start marking
+	   point-coord-change)
       ;;beginning to mark
-      ;;(print 3434)
       (let ((current-point (lem:current-point)))
 	(if (and
-	     (not (null last-point))
+	     last-point
 	     (same-buffer-points current-point last-point))		
-	    (lem:set-current-mark last-point)
 	    (progn
+	      (lem:set-current-mark last-point))
+	    (progn
+	      ;;(print "234234")
 	      ;;FIXME? when does this happen? when the last point is null or
 	      ;;exists in a different buffer? allow buffer-dependent selection?
 	      (lem:set-current-mark current-point))))
-      ;;(lem-base:region-end)
-      ;;(redraw-display)
       (setf *mouse-mode* :marking))))
 
 (defun handle-dropped-files ()

@@ -27,3 +27,9 @@
 ;;FIXME::lisp repl flashing when entering on the last char?
 ;;FIXME::off center mouse pointer
 ;;FIXME::The control button does not seem to work on windows
+
+;;FIXME::This seems to be a lem rendering bug.
+;;if you mark a region, scroll down with the point until the region fills the screen,
+;;then up again, on the first line the whole screen will be highlighted
+;;see:
+;;https://github.com/cxxxr/lem/pull/374/commits/e16af46a658c289d27a0919808c4ac14c8948104
