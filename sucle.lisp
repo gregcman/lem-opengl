@@ -140,7 +140,6 @@
 
 (defun reset-mouse-mode ()
   (setf *mouse-mode* nil))
-(defparameter *marking-window* nil)
 
 (defun same-buffer-points (a b)
   (eq 
@@ -164,6 +163,8 @@
 		     *glyph-height*)
 		1)
 	       *glyph-height*)))
+
+(defparameter *window-last-clicked-at* nil)
 (defun left-click-event ()
   ;;#+nil
   (let ((just-pressed (window::skey-j-p
@@ -182,34 +183,40 @@
 			    *mouse-last-position*))
 		(progn (setf *mouse-last-position* coord)
 		       t)
-		nil))
-	   ;;'different' is used to track whether changes happened, and whether or not
-	   ;;things should be updated
-	   (different (or
-		       ;;pressing and having a coord change = dragging
-		       (and pressing
-			    coord-change)
-		       just-released
-		       just-pressed)))
+		nil)))
       ;;FIXME::better logic? comments?
-      (when (or different)
-	(when pressing
-	  (let ((window (detect-mouse-window-intersection)))
-	    (when window
-	      (when (centered-between window)
-		(setf (lem:current-window) window)
-		(move-window-cursor-to-mouse window)
-		;;FIXME::Clicking on the minibuffer is causing errors.
-		;;Are the wrong points being used?
-
-		(when (eq *mouse-mode* :marking)
-		  (when (not (eq *marking-window*
-				 window))
-		    (setf *marking-window* window)
-		    (reset-mouse-mode)))
-		
-		(redraw-display)) ;;FIXME::this occurs below as well.
-	      ))))
+      (let ((window *window-last-clicked-at*))
+	(let ((y (- *grid-mouse-y*
+		    (lem:window-y window) ;;is move-window-cursor-to-mouse redundant?
+		    )))
+	  (let ((scroll-down-offset
+		  (cond
+		    ((> 0 y)
+		     y)
+		    ((>= y (rectified-window-height window))
+		     (+ 1 (- y (rectified-window-height window))))
+		    (t 0))))
+	    (when (or
+		   ;;when scrolled by mouse
+		   (and pressing (not (zerop *scroll-difference*)))
+		   ;;when it is scrolled
+		   (and pressing (not (zerop scroll-down-offset)))
+		   ;;when its dragging
+		   (and pressing coord-change))
+	      (lem:scroll-down scroll-down-offset)
+	      (move-window-cursor-to-mouse *window-last-clicked-at*
+					   *grid-mouse-x*
+					   (- *grid-mouse-y* scroll-down-offset))	      
+	      (redraw-display)))))
+      #+nil
+      (multiple-value-bind (window intersection-type)
+	  (detect-mouse-window-intersection)
+	(when (eq *window-last-clicked-at* window)
+	  ;;when it's the same as the originally clicked window
+	  (when t ;;(eq intersection-type :center)
+	    ;;when it's dragging in the window's center area
+	    (progn
+	      (setf (lem:current-window) window)))))
       (handle-dropped-files)
       (when just-released
 	(case *mouse-mode*
@@ -217,6 +224,16 @@
       ;;TODO::handle selections across multiple windows?
       (when just-pressed
 	;;(print "cancelling")
+	(multiple-value-bind (window intersection-type)
+	    (detect-mouse-window-intersection)	  
+	  (when (eq intersection-type :center)
+	    (progn
+	      (setf (lem:current-window) window)
+	      (move-window-cursor-to-mouse window)	      
+	      (redraw-display))
+
+	    (setf *window-last-clicked-at* window)
+	    (reset-mouse-mode)))
 	(handle-multi-click coord)
 	(handle-multi-click-selection)
 	(case *mouse-mode*
@@ -384,15 +401,17 @@
   (let ((x (lem:window-x window))
 	(w (lem:window-width window)))
     (and (<= x x1) (< x1 (+ x w)))))
+(defun rectified-window-height (window)
+  (+ (lem::window-height window)
+     (if (lem::window-use-modeline-p window)
+	 -1
+	 0)))
+
 (defun vertically-between (window &optional (y1 *grid-mouse-y*))
-  (let ((y (lem:window-y window))
-	(h (lem:window-height window)))
+  (let ((y (lem:window-y window)))
     (and (<= y y1)
 	 (< y1
-	    (+ y h
-	       (if (lem::window-use-modeline-p window)
-		   -1
-		   0))))))
+	    (+ y (rectified-window-height window))))))
 (defun centered-between (window &optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*))
   (and (horizontally-between window x1)
        (vertically-between window y1)))
