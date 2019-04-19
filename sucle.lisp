@@ -165,7 +165,15 @@
 		1)
 	       *glyph-height*)))
 
-(defparameter *window-last-clicked-at* nil)
+(struct-to-clos:struct->class
+ (defstruct window-intersection
+   window
+   intersection-type))
+
+(defparameter *null-window-intersection* (make-window-intersection))
+(defparameter *window-last-clicked-at* *null-window-intersection*)
+(defun clear-window-intersection ()
+  (setf *window-last-clicked-at* *null-window-intersection*))
 (defun left-click-event ()
   (let ((just-pressed (window::skey-j-p
 		       (window::mouseval :left)
@@ -179,67 +187,94 @@
 	  window::*control-state*)))
     (let* ((coord (list *grid-mouse-x* *grid-mouse-y*))
 	   (coord-change
-	    (if (not (equal coord
-			    *mouse-last-position*))
-		(progn (setf *mouse-last-position* coord)
-		       t)
-		nil)))
+	    (not (equal coord
+			*mouse-last-position*))))
       ;;FIXME::better logic? comments?
       ;;TODO::handle selections across multiple windows?
       (when just-pressed
 	;;(print "cancelling")
 	(multiple-value-bind (window intersection-type)
-	    (detect-mouse-window-intersection)	  
-	  (cond ((eq intersection-type :center)
-		 (progn
-		   (setf (lem:current-window) window)
-		   (move-window-cursor-to-mouse window)	      
-		   (redraw-display))
-		 (setf *window-last-clicked-at* window))
-		(t (setf *window-last-clicked-at* nil)))
-	  (reset-mouse-mode))
+	    (detect-mouse-window-intersection)
+	  ;;reset the mouse mode before, not after because
+	  ;;the intersection type can decide the mode
+	  (case *mouse-mode*
+	    ((:drag-resize-window :marking) (reset-mouse-mode)))
+	  (if (null intersection-type)
+	      (clear-window-intersection)
+	      (let ((intersection-data
+		     (make-window-intersection :window window
+					       :intersection-type intersection-type)))
+		(setf *window-last-clicked-at* intersection-data)
+		(setf (lem:current-window) window)
+		(case intersection-type
+		  (:center
+		   (move-window-cursor-to-mouse window))
+		  ((:vertical :horizontal)
+		   (setf *mouse-mode* :drag-resize-window)))
+		(redraw-display))))
 	(handle-multi-click coord)
-	(handle-multi-click-selection)
-	(case *mouse-mode*
-	  (:marking (reset-mouse-mode))))
-      
-      (let ((window *window-last-clicked-at*))
-	(when (and pressing window)
-	  (let ((y (- *grid-mouse-y*
-		      (lem:window-y window) ;;is move-window-cursor-to-mouse redundant?
-		      )))
-	    (let ((scroll-down-offset
-		   (cond
-		     ((> 0 y)
-		      y)
-		     ((>= y (rectified-window-height window))
-		      (+ 1 (- y (rectified-window-height window))))
-		     (t 0))))
-	      (when (or
-		     ;;when scrolled by mouse
-		     (not (zerop *scroll-difference*))
-		     ;;when it is scrolled
-		     (not (zerop scroll-down-offset))
-		     ;;when its dragging
-		     coord-change)
-		(lem:scroll-down scroll-down-offset)
-		(move-window-cursor-to-mouse *window-last-clicked-at*
-					     *grid-mouse-x*
-					     (- *grid-mouse-y* scroll-down-offset))	      
-		(redraw-display))))))
-      #+nil
-      (multiple-value-bind (window intersection-type)
-	  (detect-mouse-window-intersection)
-	(when (eq *window-last-clicked-at* window)
-	  ;;when it's the same as the originally clicked window
-	  (when t ;;(eq intersection-type :center)
-	    ;;when it's dragging in the window's center area
-	    (progn
-	      (setf (lem:current-window) window)))))
+	(handle-multi-click-selection))
+      (let ((window (window-intersection-window *window-last-clicked-at*)))
+	(when (and pressing
+		   window)
+	  (ecase (window-intersection-intersection-type *window-last-clicked-at*)
+	    (:center
+	     (let ((y (- *grid-mouse-y*
+			 (lem:window-y window) ;;is move-window-cursor-to-mouse redundant?
+			 )))
+	       (let ((scroll-down-offset
+		      (cond
+			((> 0 y)
+			 y)
+			((>= y (rectified-window-height window))
+			 (+ 1 (- y (rectified-window-height window))))
+			(t 0))))
+		 (when (or
+			;;when scrolled by mouse
+			(not (zerop *scroll-difference*))
+			;;when it is scrolled
+			(not (zerop scroll-down-offset))
+			;;when its dragging
+			coord-change)
+		   (lem:scroll-down scroll-down-offset)
+		   (move-window-cursor-to-mouse window
+						*grid-mouse-x*
+						(- *grid-mouse-y* scroll-down-offset))	      
+		   (redraw-display)))))
+	    (:horizontal
+	     (handler-case
+		 (let* ((p1 (window-horizontal-edge-coord window))
+			(p2 *grid-mouse-x*)
+			(difference (- p2 p1)))
+		   (unless (zerop difference)
+		     (if (plusp difference)
+			 (dotimes (i difference)
+			   (lem:shrink-window-horizontally 1))
+			 (dotimes (i (- difference))
+			   (lem:grow-window-horizontally 1)))
+		     (redraw-display)))
+	       (lem:editor-error (c)
+		 (declare (ignorable c)))))
+	    (:vertical
+	     (handler-case
+		 (let* ((p1 (window-vertical-edge-coord window))
+			(p2 *grid-mouse-y*)
+			(difference (- p2 p1)))
+		   (unless (zerop difference)
+		     (if (plusp difference)
+			 (dotimes (i difference)
+			   (lem:shrink-window 1))
+			 (dotimes (i (- difference))
+			   (lem:grow-window 1)))
+		     (redraw-display)))
+	       (lem:editor-error (c)
+		 (declare (ignorable c))))))))
       (when just-released
 	(case *mouse-mode*
-	  (:marking (reset-mouse-mode))))
-      (handle-drag-select-region pressing just-pressed))))
+	  ((:marking :drag-resize-window) (reset-mouse-mode))))
+      (handle-drag-select-region pressing just-pressed)
+      ;;save the mouse position for next tick
+      (setf *mouse-last-position* coord))))
 
 (defun safe-point= (point-a point-b)
   (and
@@ -264,7 +299,7 @@
 			    :temporary)))
     (when (and
 	   pressing
-	   (not (eq *mouse-mode* :marking))
+	   (null *mouse-mode*)
 	    ;;if it was just pressed, there's going to be a point-coord jump
 	   (not just-pressed)
 	   ;;selecting a single char should not start marking
@@ -367,9 +402,6 @@
 			(lem:move-point (lem:current-point)
 					*point-clicked-at*))))))))))
 
-;;;mouse stuff copy and pasted from frontends/pdcurses/ncurses-pdcurseswin32
-(defvar *dragging-window* ())
-
 (defun move-window-cursor-to-mouse (window &optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*))
   (let ((x (lem:window-x window))
 	(y (lem:window-y window)))
@@ -408,6 +440,10 @@
 (defun centered-between (window &optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*))
   (and (horizontally-between window x1)
        (vertically-between window y1)))
+(defun window-vertical-edge-coord (window)
+  (- (lem:window-y window) 1))
+(defun window-horizontal-edge-coord (window)
+  (- (lem:window-x window) 1))
 
 (defun detect-mouse-window-intersection
     (&optional (x1 *grid-mouse-x*) (y1 *grid-mouse-y*)
@@ -424,77 +460,26 @@
     (when lem::*minibuf-window*
       (push lem::*minibuf-window* windows))
     (block return 
-      (dolist (window windows) 
-	(let ((x (lem:window-x window))
-	      (y (lem:window-y window))) 
-	  #+nil
-	  (when (eq window lem::*minibuf-window*)
-	    ;;(print (list x y w h x1 y1))
-	    )
-	  
-	  (cond
-	    ;; vertical dragging window
-	    ((and (= y1 (- y 1))
-		  (horizontally-between window x1))
-	     ;;(setf *dragging-window* (list window 'y))
-	     (return-from return (values window :vertical)))
-	    ;; horizontal dragging window	    
-	    ((and (= x1 (- x 1))
-		  (vertically-between window y1))
-	     ;;(setf *dragging-window* (list window 'x))
-	     (return-from return (values window :horizontal)))
-	    ((centered-between window x1 y1)
-	     (return-from return (values window :center)))
-	    (t))))
+      (dolist (window windows)  
+	#+nil
+	(when (eq window lem::*minibuf-window*)
+	  ;;(print (list x y w h x1 y1))
+	  )	  
+	(cond
+	  ;; vertical dragging window
+	  ((and (= y1 (window-vertical-edge-coord window))
+		(horizontally-between window x1))
+	   ;;(setf *dragging-window* (list window 'y))
+	   (return-from return (values window :vertical)))
+	  ;; horizontal dragging window	    
+	  ((and (= x1 (window-horizontal-edge-coord window))
+		(vertically-between window y1))
+	   ;;(setf *dragging-window* (list window 'x))
+	   (return-from return (values window :horizontal)))
+	  ((centered-between window x1 y1)
+	   (return-from return (values window :center)))
+	  (t)))
       (values nil nil))))
-
-#+nil
-(defun mouse-event-proc (state x1 y1)
-  (lambda ()
-    (cond
-      ;; button1 down
-      ((eq state t)
-       (let ((press state))
-         (switch-to-window-mouse x1 y1 press)))
-      ;; button1 up
-      #+nil
-      ((null state)
-       (let ((o (first *dragging-window*)))
-         (when (lem:windowp o)
-           (multiple-value-bind (x y w h) (mouse-get-window-rect o)
-	     (declare (ignorable x y))
-             (setf (lem:current-window) o)
-             (cond
-               ;; vertical dragging window
-               ((eq (second *dragging-window*) 'y)
-                (let ((vy (- (- (lem:window-y o) 1) y1)))
-                  ;; this check is incomplete if 3 or more divisions exist
-                  (when (and (>= y1       3)
-                             (>= (+ h vy) 3))
-                    (lem:grow-window vy)
-                    (lem:redraw-display))))
-               ;; horizontal dragging window
-               (t
-                (let ((vx (- (- (lem:window-x o) 1) x1)))
-                  ;; this check is incomplete if 3 or more divisions exist
-                  (when (and (>= x1       5)
-                             (>= (+ w vx) 5))
-                    (lem:grow-window-horizontally vx)
-                    ;; workaround for display update problem (incomplete)
-		    #+nil ;;FIXME
-                    (ncurses-clone::ncurses-re
-		     ;;force-refresh-display ;;charms/ll:*cols*
-		     (- ;;charms/ll:*lines*
-		      ncurses-clone::*lines*
-		      1
-		      ))
-                    (lem:redraw-display))))
-               )))
-         (when o
-           (setf *dragging-window*
-                 (list nil (list x1 y1) *dragging-window*)))))
-      )))
-
 
 (defun resize-event ()
   (block out

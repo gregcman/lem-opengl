@@ -37,3 +37,7 @@
 ;;FIXME::get rid of ncurses-color pairs. Just store the foreground and background
 ;;8 bits char, 8 fg, 8 bg, 1 reverse 1 bold 1 underline = 27 bits, 30 bit fixnum of
 ;;32 bit lisp machines
+
+;;FIXME::lem bug where moving the cursor to a long, wrapping line causes
+;;the beginning of the line to be forced into view. Then scrolling down with the cursor,
+;;the cursor can leave the screen. Scrolling on wrapping lines causes window to jump up
