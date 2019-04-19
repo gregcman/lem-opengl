@@ -1,8 +1,4 @@
 (in-package :lem-sucle)
-(lem:add-hook
- lem:*before-init-hook*
- (lambda ()
-   (lem:load-theme "misterioso")))
 
 (lem:define-command forward2 (&optional (n 1)) ("p")
   (lem:forward-char 1)
@@ -38,12 +34,18 @@
 	'lem.listener-mode:listener-prev-input)
       (lem:define-key lem:*global-keymap* "Return"
 	'lem.language-mode:newline-and-indent)
+      (progn
+	;;FIXME::where to put this?
+	(lem::clear-all-attribute-cache)
+	(ncurses-clone::reset-ncurses-color-pairs)
+	(lem.term::reset-color-pair))
       (lem:lem)
       (lem:send-event
        (lambda ()
 	 (lem:find-file (merge-pathnames "other/example.lisp"
 					 (asdf:system-source-directory :lem-opengl)))
-	 (lem-paredit-mode:paredit-mode))))
+	 (lem-paredit-mode:paredit-mode)
+	 (lem:load-theme "misterioso"))))
     (lem-sucle::input-loop)))
 
 (in-package :lem-user)

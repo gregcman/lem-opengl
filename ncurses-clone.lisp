@@ -100,16 +100,21 @@
 (defparameter *fg-default-really* 15)
 (defparameter *bg-default-really* 0)
 
-(defparameter *fg-default* *fg-default-really*)
-(defparameter *bg-default* *bg-default-really*)
+(defparameter *fg-default* nil)
+(defparameter *bg-default* nil)
 
-(defparameter *pairs* (let ((pairs (make-hash-table)))
-			(setf (gethash 0 pairs)
-			      (cons *fg-default-really*
-				    *bg-default-really*)
+(defparameter *pairs* nil)
+(defun reset-ncurses-color-pairs ()
+  (setf *fg-default* *fg-default-really*)
+  (setf *bg-default* *bg-default-really*)
+  (setf *pairs*
+	(let ((pairs (make-hash-table)))
+	  (setf (gethash 0 pairs)
+		(cons *fg-default-really*
+		      *bg-default-really*)
  ;;;;FIXME whats white and black for default? short?
-			      )
-			pairs))
+		)
+	  pairs)))
 
 (defun ncurses-init-pair (pair-counter fg bg)
   (setf (gethash pair-counter *pairs*)

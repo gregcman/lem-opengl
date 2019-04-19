@@ -33,3 +33,7 @@
 ;;then up again, on the first line the whole screen will be highlighted
 ;;see:
 ;;https://github.com/cxxxr/lem/pull/374/commits/e16af46a658c289d27a0919808c4ac14c8948104
+
+;;FIXME::get rid of ncurses-color pairs. Just store the foreground and background
+;;8 bits char, 8 fg, 8 bg, 1 reverse 1 bold 1 underline = 27 bits, 30 bit fixnum of
+;;32 bit lisp machines

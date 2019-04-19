@@ -19,11 +19,14 @@
 ;; mouse mode
 ;;   =0: not use mouse
 ;;   =1: use mouse
+#+nil
 (defvar *mouse-mode* #+win32 1 #-win32 0)
 
 ;; for mouse
+#+nil
 (defun get-mouse-mode ()
   *mouse-mode*)
+#+nil
 (defun enable-mouse ()
   (setf ncurses-clone::*mouse-enabled-p* t)
   #+nil
@@ -32,6 +35,7 @@
     ;;FIXME- mouse?
     (charms/ll:mousemask (logior charms/ll:all_mouse_events
 				 charms/ll:report_mouse_position))))
+#+nil
 (defun disable-mouse ()
   (setf ncurses-clone::*mouse-enabled-p* nil)
   #+nil
