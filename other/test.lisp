@@ -37,7 +37,9 @@
       (progn
 	;;FIXME::where to put this?
 	(lem::clear-all-attribute-cache)
+	#+nil
 	(ncurses-clone::reset-ncurses-color-pairs)
+	#+nil
 	(lem.term::reset-color-pair))
       (lem:lem)
       (lem:send-event
@@ -56,13 +58,10 @@
   (background ;;"#3a3a3a" ;;
 	      "#2d3743"
 	      )
-  (cursor :background "#212931"
+  (cursor :background "#415160"
 	  ;;FIXME::what is the correct foreground? ;;not perfect, not same as modeline background,
 	  ;;but good enough?
-	  :foreground "#415160"
-	  ;;FIXME::background and foreground are switched because
-	  ;;I can't figure out the correct way to detect cursors in impl.lisp
-	  ) ;;
+	  :foreground "#212931") ;;
   (region :background "#2d4948" :foreground "#e1e1e0") ;;
   (modeline :background "#212931" :foreground "#eeeeec") ;;
   (modeline-inactive :background "#878787" :foreground "#eeeeec");;

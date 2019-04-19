@@ -83,6 +83,7 @@
 		  (;;charms/ll:newwin
 		   ncurses-clone::ncurses-newwin
 		   nlines ncols begin-y begin-x)))
+	     #+nil;;What is this for? keypad?
 	     (when use-modeline (;;charms/ll:keypad
 				 ncurses-clone::ncurses-keypad
 				 win 1))
@@ -118,14 +119,18 @@
 
 (defmethod lem-if:clear ((implementation sucle) view)
   ;;;https://linux.die.net/man/3/clearok
+  ;;#+nil;;FIXME::what is this for?
   (with-view-lock view
-    (;;charms/ll:clearok
-     ncurses-clone::ncurses-clearok
-     (ncurses-view-scrwin view) 1)
-    (when (ncurses-view-modeline-scrwin view)
+    (ncurses-clone::clear-win (ncurses-view-scrwin view))
+    #+nil
+    (progn
       (;;charms/ll:clearok
        ncurses-clone::ncurses-clearok
-       (ncurses-view-modeline-scrwin view) 1))))
+       (ncurses-view-scrwin view) 1)
+      (when (ncurses-view-modeline-scrwin view)
+	(;;charms/ll:clearok
+	 ncurses-clone::ncurses-clearok
+	 (ncurses-view-modeline-scrwin view) 1)))))
 
 (defmethod lem-if:set-view-size ((implementation sucle) view width height)
   (with-view-lock view
@@ -162,27 +167,38 @@
 
 (defun attribute-to-bits (attribute-or-name)
   (let ((attribute (lem:ensure-attribute attribute-or-name nil))
-        (cursorp (eq attribute-or-name 'lem:cursor)))
+        ;;(cursorp (eq attribute-or-name 'lem:cursor))
+	)
     (if (null attribute)
         0
         (or (lem::attribute-%internal-value attribute)
             (let* ((foreground (lem:attribute-foreground attribute))
                    (background (lem:attribute-background attribute))
-                   (bits (logior (lem.term:get-color-pair foreground background)
-                                 0
-                                 (if (lem::attribute-bold-p attribute)
-                                     ;;charms/ll:a_bold
-				     ncurses-clone::a_bold
-                                     0)
-                                 (if (lem::attribute-underline-p attribute)
-                                     ;;charms/ll:a_underline
-				     ncurses-clone::a_underline
-                                     0)
-				 (if (or
-				      cursorp
-				      (lem::attribute-reverse-p attribute))
-				     ncurses-clone::a_reverse
-				     0))))
+                   (bits (logior
+			  ;;FIXME::fragile bit layout
+			  (multiple-value-bind (color existsp)
+			      (lem.term::get-color foreground)
+			    (if existsp
+				(logior color (load-time-value (ash 1 8)))
+				ncurses-clone::*fg-default*))
+			  (ash (multiple-value-bind (color existsp)
+				   (lem.term::get-color background)
+				 (if existsp
+				     (logior color (load-time-value (ash 1 8)))
+				     ncurses-clone::*bg-default*))
+			       9)
+			  ;;(lem.term:get-color-pair foreground background)
+			  (if (lem::attribute-bold-p attribute)
+			      ;;charms/ll:a_bold
+			      ncurses-clone::a_bold
+			      0)
+			  (if (lem::attribute-underline-p attribute)
+			      ;;charms/ll:a_underline
+			      ncurses-clone::a_underline
+			      0)
+			  (if  (lem::attribute-reverse-p attribute)
+			       ncurses-clone::a_reverse
+			       0))))
               (setf (lem::attribute-%internal-value attribute) bits)
               bits)))))
 
@@ -273,16 +289,15 @@
        ncurses-clone::ncurses-wnoutrefresh
        ;;charms/ll:*stdscr*
        ncurses-clone::*std-scr*))
+    (;;charms/ll:wnoutrefresh
+     ncurses-clone::ncurses-wnoutrefresh
+     (ncurses-view-scrwin view))
     (when (ncurses-view-modeline-scrwin view)
       (;;charms/ll:wnoutrefresh
        ncurses-clone::ncurses-wnoutrefresh
        (ncurses-view-modeline-scrwin view))
       ;;   (ncurses-clone::print-virtual-window ncurses-clone::*virtual-window* *no*)
-      )
-    
-    (;;charms/ll:wnoutrefresh
-     ncurses-clone::ncurses-wnoutrefresh
-     (ncurses-view-scrwin view))))
+      )))
 
 (defmethod lem-if:update-display ((implementation sucle))
   ;;FIXME::why does this do nothing?

@@ -4,16 +4,22 @@
 ;;;;Attributes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;FIXME::diverging from ncurses
+;;8 bits for foreground and 8 bits for background
+(defparameter *color-bit-size* 18) 
 (defparameter A_BOLD
-  #b100000000 ;;8 bits for char, could be 7?
+  (ash 1 *color-bit-size*)
+  ;;#b100000000 ;;8 bits for char, could be 7?
   ;;#x00200000
   )
 (defparameter A_UNDERLINE
-  #b1000000000
+  (ash 1 (+ *color-bit-size* 1))
+  ;;#b1000000000
   ;;#x00020000
   )
 (defparameter A_REVERSE
-  #b10000000000
+  (ash 1 (+ *color-bit-size* 2))
+  ;;#b10000000000
   )
 
 ;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
@@ -27,8 +33,9 @@
 (defun ncurses-attroff (n)
   (setf *current-attributes*
 	(logand *current-attributes* (lognot n))))
+;;FIXME::this is not how ncurses is implemented
 (defmacro with-attributes ((attributes) &body body)
-  `(let ((*current-attributes* (logior ,attributes *current-attributes*)))
+  `(let ((*current-attributes* ,attributes))
      ,@body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41,9 +48,11 @@
  (defstruct big-glyph
    value
    attributes))
-
-(deftype glyph () `(unsigned-byte ,(+ 8 8 3)))
-(deftype glyph-attributes () `(unsigned-byte ,(+ 8 3)))
+(defparameter *glyph-attribute-bit-size* (+ *color-bit-size* 3))
+(utility:eval-always
+  (defparameter *bits-per-char-in-glyph* 8))
+(deftype glyph () `(unsigned-byte ,(+ *bits-per-char-in-glyph* *glyph-attribute-bit-size*)))
+(deftype glyph-attributes () `(unsigned-byte ,*glyph-attribute-bit-size*))
 (defun glyph-value (glyph)
   (etypecase glyph
     (glyph
@@ -51,7 +60,7 @@
 	 (declare (type glyph glyph)
 		  (optimize (speed 3)
 			    (safety 0)))
-       (code-char (logand glyph (utility::etouq (1- (ash 1 8)))))))
+       (code-char (logand glyph (utility::etouq (1- (ash 1 *bits-per-char-in-glyph*)))))))
     (big-glyph (big-glyph-value glyph))))
 (defun glyph-attributes (glyph)
   (etypecase glyph
@@ -69,19 +78,19 @@
   (ash attributes 8))
 
 (progn
-  (declaim (inline less-than-256-p))
-  (defun less-than-256-p (n)
+  (declaim (inline n-char-fits-in-glyph))
+  (defun n-char-fits-in-glyph (n)
     ;;(> code 256)
-    (zerop (logandc2 n 255))))
+    (zerop (logandc2 n (utility::etouq (1- (ash 1 *bits-per-char-in-glyph*)))))))
 
 (defun gen-glyph (value attributes)
   (declare (optimize (speed 3)
 		     (safety 0)))
   (declare (type glyph-attributes attributes))
   (let ((code (char-code value)))
-    (if (less-than-256-p code)
+    (if (n-char-fits-in-glyph code)
 	(logior (char-code value)
-		(ash attributes 8))
+		(ash attributes (utility:etouq *bits-per-char-in-glyph*)))
 	(make-big-glyph :value value
 			:attributes attributes))))
 #+nil
@@ -97,45 +106,47 @@
 ;;;;Color Pairs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter *fg-default-really* 15)
-(defparameter *bg-default-really* 0)
+#+nil
+(progn
+  (defparameter *fg-default-really* 15)
+  (defparameter *bg-default-really* 0))
 
-(defparameter *fg-default* nil)
-(defparameter *bg-default* nil)
-
-(defparameter *pairs* nil)
-(defun reset-ncurses-color-pairs ()
-  (setf *fg-default* *fg-default-really*)
-  (setf *bg-default* *bg-default-really*)
-  (setf *pairs*
-	(let ((pairs (make-hash-table)))
-	  (setf (gethash 0 pairs)
-		(cons *fg-default-really*
-		      *bg-default-really*)
+(defparameter *fg-default* 15)
+(defparameter *bg-default* 0)
+#+nil
+(progn
+  (defparameter *pairs* nil)
+  (defun reset-ncurses-color-pairs ()
+    (setf *fg-default* *fg-default-really*)
+    (setf *bg-default* *bg-default-really*)
+    (setf *pairs*
+	  (let ((pairs (make-hash-table)))
+	    (setf (gethash 0 pairs)
+		  (cons *fg-default-really*
+			*bg-default-really*)
  ;;;;FIXME whats white and black for default? short?
-		)
-	  pairs)))
+		  )
+	    pairs)))
 
-(defun ncurses-init-pair (pair-counter fg bg)
-  (setf (gethash pair-counter *pairs*)
-	(cons fg bg)))
-(defun ncurses-color-pair (pair-counter)
-  (gethash pair-counter *pairs*)) ;;fixme -> this is not how ncurses works.
+  (defun ncurses-init-pair (pair-counter fg bg)
+    (setf (gethash pair-counter *pairs*)
+	  (cons fg bg)))
+  (defun ncurses-color-pair (pair-counter)
+    (gethash pair-counter *pairs*)) ;;fixme -> this is not how ncurses works.
 
-(defun ncurses-pair-content (pair-counter)
-  (let ((pair (ncurses-color-pair pair-counter)))
-    (values (car pair)
-	    (cdr pair))))
-
-(defun ncurses-assume-default-color (fg bg)
+  (defun ncurses-pair-content (pair-counter)
+    (let ((pair (ncurses-color-pair pair-counter)))
+      (values (car pair)
+	      (cdr pair))))
+  (defun ncurses-assume-default-color (fg bg)
   ;;;;how ncurses works. see https://users-cs.au.dk/sortie/sortix/release/nightly/man/man3/assume_default_colors.3.html
-  (setf *fg-default* (if (= fg -1)
-			 *fg-default*
-			 fg)
-	*bg-default* (if (= bg -1)
-			 *bg-default*
-			 bg))
-  (ncurses-init-pair 0 *fg-default* *bg-default*))
+    (setf *fg-default* (if (= fg -1)
+			   *fg-default*
+			   fg)
+	  *bg-default* (if (= bg -1)
+			   *bg-default*
+			   bg))
+    (ncurses-init-pair 0 *fg-default* *bg-default*)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;Window and window operations
@@ -147,10 +158,10 @@
    COLS
    y
    x
-   keypad-p ;;see https://linux.die.net/man/3/keypad
-   clearok
-   scrollok
-   attr-bits
+   ;;keypad-p ;;see https://linux.die.net/man/3/keypad
+   ;;clearok
+   ;;scrollok
+   ;;attr-bits
    cursor-y
    cursor-x
    data))
@@ -227,6 +238,12 @@
 	      (ref-grid column-index row-index grid-src)))))
   grid-dest)
 
+(defun clear-win (win)
+  (map nil
+       (lambda (row)
+	 (fill row *clear-glyph*))
+       (win-data win)))
+
 (defparameter *win* nil)
 
 (defun ncurses-newwin (nlines ncols begin-y begin-x)
@@ -237,7 +254,8 @@
 		       :cursor-x 0
 		       :cursor-y 0
 		       :data (make-grid nlines ncols)
-		       :attr-bits 0)))
+		       ;;:attr-bits 0
+		       )))
   ;;  (add-win win)
     (setf *win* win)
     win))
@@ -299,11 +317,13 @@
 (defun ncurses-vline (char n)
   (ncurses-wvline *std-scr* char n))
 
+#+nil
 (defun ncurses-keypad (win value)
   (setf (win-keypad-p win) value))
 (defun c-true (value)
   (not (zerop value)))
 
+#+nil
 (defun ncurses-clearok (win value)
   "If clearok is called with TRUE as argument, the next call to wrefresh with this window will clear the screen completely and redraw the entire screen from scratch. This is useful when the contents of the screen are uncertain, or in some cases for a more pleasing visual effect. If the win argument to clearok is the global variable curscr, the next call to wrefresh with any window causes the screen to be cleared and repainted from scratch. "
   (setf (win-clearok win)
@@ -411,18 +431,20 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 		    (y (win-cursor-y win)))
     (flet ((advance ()
 	     (if (= (max-cursor-x win) x)
-		 (if (= (max-cursor-y win) y)
-		     (cond ((win-scrollok win) ;;scroll the window and reset to x pos
-			    (ncurses-wscrl win 1)
-			    (setf (win-cursor-x win) 0))
-			   (t (progn ;;do nothing
-				)))
-		     ;;reset x and go to next line, theres space
-		     (progn
-		       ;;(print (random 34))
-		       #+nil
-		       (setf (win-cursor-x win) 0
-			     (win-cursor-y win) (+ 1 y))))
+		 (cond ((= (max-cursor-y win) y)
+			#+nil
+			(cond ((win-scrollok win) ;;scroll the window and reset to x pos
+			       (ncurses-wscrl win 1)
+			       (setf (win-cursor-x win) 0))
+			      (t (progn ;;do nothing
+				   ))))
+		       (t
+			;;reset x and go to next line, theres space
+			(progn
+			  ;;(print (random 34))
+			  #+nil
+			  (setf (win-cursor-x win) 0
+				(win-cursor-y win) (+ 1 y)))))
 		 ;;its not at the end of line, no one cares
 		 (progn
 		   (setf (win-cursor-x win) (+ 1 x))))))
@@ -468,8 +490,8 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 (defun add-char (x y value &optional (win *win*))
   (add-thing x y
 	     (gen-glyph value
-			(logior (win-attr-bits win)
-				*current-attributes*))
+			;;(logior (win-attr-bits win))
+			*current-attributes*)
 	     win)
   win)
 
@@ -503,8 +525,10 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 			       )
   ;;;FIXME:: follow https://linux.die.net/man/3/wnoutrefresh with "touching"
   ;;;different lines
+  #+nil
   (when (win-clearok win)
     ;;FIXME -> clearok? what to do? check this: https://linux.die.net/man/3/clearok
+    (clear-win *std-scr*)
     (setf (win-clearok win) nil))
   (with-virtual-window-lock
     (let ((grid (win-data win))

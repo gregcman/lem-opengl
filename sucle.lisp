@@ -631,8 +631,15 @@
 				 (+ width index))
 			 (return-from out))
 		       (let* ((attributes (ncurses-clone::glyph-attributes glyph))
-			      (pair (ncurses-clone::ncurses-color-pair (mod attributes 256))))
+			      #+nil
+			      (pair (ncurses-clone::ncurses-color-pair
+				     (ldb (byte 8 0) attributes))))
 			 (let ((realfg
+				;;FIXME::fragile bit layout
+				(if (zerop (ldb (byte 1 8) attributes))
+				    ncurses-clone::*fg-default*
+				    (ldb (byte 8 0) attributes))
+				#+nil
 				(let ((fg (car pair)))
 				  (if (or
 				       (not pair)
@@ -640,6 +647,10 @@
 				      ncurses-clone::*fg-default* ;;FIXME :cache?
 				      fg)))
 			       (realbg
+				(if (zerop (ldb (byte 1 (+ 1 8 8)) attributes))
+				    ncurses-clone::*bg-default*
+				    (ldb (byte 8 (+ 1 8)) attributes))
+				 #+nil
 				(let ((bg (cdr pair)))
 				  (if (or
 				       (not pair)
@@ -653,7 +664,7 @@
 			       (color 
 				;;FIXME::this is temporary, to chop off extra unicode bits
 				(let ((code (char-code glyph-character)))
-				  (if (ncurses-clone::less-than-256-p code)
+				  (if (ncurses-clone::n-char-fits-in-glyph code)
 				      code
 				      ;;Draw nice-looking placeholders for unimplemented characters.
 				      ;;1 wide -> #

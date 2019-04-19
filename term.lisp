@@ -120,72 +120,73 @@
         (values 0 nil))))
 
 
-(defvar *pair-counter* 0)
-(defvar *color-pair-table* (make-hash-table :test 'equal))
-
-(defun reset-color-pair ()
-  (clrhash *color-pair-table*)
-  (setf *pair-counter* 0))
-
-(defun init-pair (pair-color)
-  (incf *pair-counter*)
-  ;;(charms/ll:init-pair *pair-counter* (car pair-color) (cdr pair-color))
-  (ncurses-clone::ncurses-init-pair *pair-counter* (car pair-color) (cdr pair-color))
-  (setf (gethash pair-color *color-pair-table*)
-	*pair-counter* ;;FIXME wat
-	;;(ncurses-clone::ncurses-color-pair *pair-counter*)
-        ;;(charms/ll:color-pair *pair-counter*)
-	)
-  ;;FIXME:: return color-pair?
-  *pair-counter*)
 #+nil
-"After it has been initialized, COLOR_PAIR(n), a macro defined in <curses.h>, can be used as a new video attribute. "
-;;;https://linux.die.net/man/3/color_pair
-(defparameter *color-pairs* 256) ;;;FIXME::wtf does this mean? I added this and am guessing.
+(progn
+  (defvar *pair-counter* 0)
+  (defvar *color-pair-table* (make-hash-table :test 'equal))
 
-(defun get-color-pair (fg-color-name bg-color-name)
-  (let* ((fg-color (if (null fg-color-name) -1 (get-color fg-color-name)))
-         (bg-color (if (null bg-color-name) -1 (get-color bg-color-name)))
-         (pair-color (cons fg-color bg-color)))
-    (cond ((gethash pair-color *color-pair-table*))
-          ((< *pair-counter* *color-pairs*)
-           (init-pair pair-color))
-          (t 0))))
+  (defun reset-color-pair ()
+    (clrhash *color-pair-table*)
+    (setf *pair-counter* 0))
 
-#+(or)
-(defun get-color-content (n)
-  (cffi:with-foreign-pointer (r (cffi:foreign-type-size '(:pointer :short)))
-    (cffi:with-foreign-pointer (g (cffi:foreign-type-size '(:pointer :short)))
-      (cffi:with-foreign-pointer (b (cffi:foreign-type-size '(:pointer :short)))
-        (charms/ll:color-content n r g b)
-        (list (cffi:mem-ref r :short)
-              (cffi:mem-ref g :short)
-              (cffi:mem-ref b :short))))))
-
-(defun get-default-colors ()
-  (ncurses-clone::ncurses-pair-content 0)
+  (defun init-pair (pair-color)
+    (incf *pair-counter*)
+    ;;(charms/ll:init-pair *pair-counter* (car pair-color) (cdr pair-color))
+    (ncurses-clone::ncurses-init-pair *pair-counter* (car pair-color) (cdr pair-color))
+    (setf (gethash pair-color *color-pair-table*)
+	  *pair-counter* ;;FIXME wat
+	  ;;(ncurses-clone::ncurses-color-pair *pair-counter*)
+	  ;;(charms/ll:color-pair *pair-counter*)
+	  )
+    ;;FIXME:: return color-pair?
+    *pair-counter*)
   #+nil
-  (cffi:with-foreign-pointer (f (cffi:foreign-type-size '(:pointer :short)))
-    (cffi:with-foreign-pointer (b (cffi:foreign-type-size '(:pointer :short)))
-      (charms/ll:pair-content 0 f b)
-      (values (cffi:mem-ref f :short)
-              (cffi:mem-ref b :short)))))
+  "After it has been initialized, COLOR_PAIR(n), a macro defined in <curses.h>, can be used as a new video attribute. "
+;;;https://linux.die.net/man/3/color_pair
+  (defparameter *color-pairs* 256) ;;;FIXME::wtf does this mean? I added this and am guessing.
 
-(defun set-default-color (foreground background)
-  ;;;;-1 for values mean defaults.
-  (let ((fg-color (if foreground (get-color foreground) -1))
-        (bg-color (if background (get-color background) -1)))
-    (ncurses-clone::ncurses-assume-default-color fg-color bg-color)
+  (defun get-color-pair (fg-color-name bg-color-name)
+    (let* ((fg-color (if (null fg-color-name) -1 (get-color fg-color-name)))
+	   (bg-color (if (null bg-color-name) -1 (get-color bg-color-name)))
+	   (pair-color (cons fg-color bg-color)))
+      (cond ((gethash pair-color *color-pair-table*))
+	    ((< *pair-counter* *color-pairs*)
+	     (init-pair pair-color))
+	    (t 0))))
+
+  #+(or)
+  (defun get-color-content (n)
+    (cffi:with-foreign-pointer (r (cffi:foreign-type-size '(:pointer :short)))
+      (cffi:with-foreign-pointer (g (cffi:foreign-type-size '(:pointer :short)))
+	(cffi:with-foreign-pointer (b (cffi:foreign-type-size '(:pointer :short)))
+	  (charms/ll:color-content n r g b)
+	  (list (cffi:mem-ref r :short)
+		(cffi:mem-ref g :short)
+		(cffi:mem-ref b :short))))))
+
+  (defun get-default-colors ()
+    (ncurses-clone::ncurses-pair-content 0)
     #+nil
-    (charms/ll:assume-default-colors fg-color
-                                     bg-color)))
+    (cffi:with-foreign-pointer (f (cffi:foreign-type-size '(:pointer :short)))
+      (cffi:with-foreign-pointer (b (cffi:foreign-type-size '(:pointer :short)))
+	(charms/ll:pair-content 0 f b)
+	(values (cffi:mem-ref f :short)
+		(cffi:mem-ref b :short)))))
+
+  (defun set-default-color (foreground background)
+  ;;;;-1 for values mean defaults.
+    (let ((fg-color (if foreground (get-color foreground) -1))
+	  (bg-color (if background (get-color background) -1)))
+      (ncurses-clone::ncurses-assume-default-color fg-color bg-color)
+      #+nil
+      (charms/ll:assume-default-colors fg-color
+				       bg-color))))
 
 (defun term-set-foreground (name)
   (multiple-value-bind (fg found) (get-color name)
     (cond (found
-	   (;;charms/ll:assume-default-colors
-	    ncurses-clone::ncurses-assume-default-color
-	    fg ncurses-clone::*bg-default*)
+	   ;;charms/ll:assume-default-colors
+	   (setf  ncurses-clone::*fg-default* fg)
 	   t)
 	  (t
 	   (error "Undefined color: ~A" name)))))
@@ -193,14 +194,19 @@
 (defun term-set-background (name)
   (multiple-value-bind (bg found) (get-color name)
     (cond (found
-	   (;;charms/ll:assume-default-colors
-	    ncurses-clone::ncurses-assume-default-color
-	    ncurses-clone::*fg-default* bg)
+	   ;;charms/ll:assume-default-colors
+	   (setf
+	    ncurses-clone::*bg-default* bg)
 	   t)
 	  (t
 	   (error "Undefined color: ~A" name)))))
 
 (defun background-mode ()
+  ;;FIXME
+  :light
+  ;;:dark
+  #+nil
+  ;;FIXME
   (let ((b (nth-value 1 (get-default-colors))))
     (cond ((= b -1) :light
 	   )
