@@ -25,6 +25,8 @@
 ;;https://invisible-island.net/ncurses/ncurses-intro.html#stdscr
 #+nil "The other is to set the current-highlight value. This is logical-or'ed with any highlight you specify the first way. You do this with the functions attron(), attroff(), and attrset(); see the manual pages for details. Color is a special kind of highlight. The package actually thinks in terms of color pairs, combinations of foreground and background colors. The sample code above sets up eight color pairs, all of the guaranteed-available colors on black. Note that each color pair is, in effect, given the name of its foreground color. Any other range of eight non-conflicting values could have been used as the first arguments of the init_pair() values."
 (defparameter *current-attributes* 0)
+(defparameter *current-attributes-object* nil)
+(defparameter *force-extra-big-glyphs-for-attributes-object* nil)
 #+nil
 (defun ncurses-attron (n)
   (setf *current-attributes*
@@ -34,8 +36,10 @@
   (setf *current-attributes*
 	(logand *current-attributes* (lognot n))))
 ;;FIXME::this is not how ncurses is implemented
-(defmacro with-attributes ((attributes) &body body)
-  `(let ((*current-attributes* ,attributes))
+(defmacro with-attributes ((attributes attribute-object &optional save-attributes-object) &body body)
+  `(let ((*current-attributes* ,attributes)
+	 (*current-attributes-object* ,attribute-object)
+	 (*force-extra-big-glyphs-for-attributes-object* ,save-attributes-object))
      ,@body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,6 +52,20 @@
  (defstruct big-glyph
    value
    attributes))
+;;Extra big glyph is used to hold an attribute object,
+;;which then points to an overlay, which points to a window and so on
+;;FIXME::uses struct-to-clos, but depends on big-glyph being a class
+(defclass extra-big-glyph (big-glyph)
+  ((attribute-data
+    :initarg :attribute-data
+    :accessor extra-big-glyph-attribute-data
+    :initform nil)))
+(defun make-extra-big-glyph (&key attribute-data value attributes)
+  (make-instance 'extra-big-glyph
+		 :attribute-data attribute-data
+		 :value value
+		 :attributes attributes))
+
 (defparameter *glyph-attribute-bit-size* (+ *color-bit-size* 3))
 (utility:eval-always
   (defparameter *bits-per-char-in-glyph* 8))
@@ -488,11 +506,18 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
   "this is for tabbing, see waddch. its every 8th column"
   (* 8 (+ 1 (floor n 8))))
 (defun add-char (x y value &optional (win *win*))
-  (add-thing x y
+  (let ((glyph
+	 (if *force-extra-big-glyphs-for-attributes-object*
+	     (make-extra-big-glyph
+	      :attribute-data *current-attributes-object*
+	      :value value
+	      :attributes *current-attributes*)
 	     (gen-glyph value
 			;;(logior (win-attr-bits win))
-			*current-attributes*)
-	     win)
+			*current-attributes*))))
+    (add-thing x y
+	       glyph
+	       win))
   win)
 
 (defun add-thing (x y thing &optional (win *win*))

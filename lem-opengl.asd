@@ -25,4 +25,5 @@
                (:file "sucle")
 	       (:module "other"
 			:components
-			((:file "test")))))
+			((:file "test")
+			 (:file "test2")))))

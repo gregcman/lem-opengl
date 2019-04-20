@@ -29,6 +29,14 @@
    (print (ncurses-view-scrwin obj) stream)
    (print (ncurses-view-modeline-scrwin obj) stream)))
 
+;;;;
+(defclass sucle-attribute (lem:attribute)
+  ((overlay
+    :initarg :overlay
+    :initform nil
+    :accessor sucle-attribute-overlay)))
+;;;;
+
 (defparameter *editor-thread* nil)
 (defmethod lem-if:invoke ((implementation sucle) function)
   (when (or (null *editor-thread*)
@@ -209,7 +217,7 @@
       (;;charms/ll:wattron
        ncurses-clone::ncurses-wattron
        (ncurses-view-scrwin view) attr)
-      (ncurses-clone::with-attributes (attr)
+      (ncurses-clone::with-attributes (attr attribute (typep attribute 'sucle-attribute))
 	;;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
 	(;;charms/ll:mvwaddstr
 	 ncurses-clone::ncurses-mvwaddstr
@@ -227,7 +235,7 @@
       (;;charms/ll:wattron
        ncurses-clone::ncurses-wattron
        (ncurses-view-modeline-scrwin view) attr)
-      (ncurses-clone::with-attributes (attr)
+      (ncurses-clone::with-attributes (attr attribute (typep attribute 'sucle-attribute))
 	(;;charms/ll:mvwaddstr
 	 ncurses-clone::ncurses-mvwaddstr
 	 (ncurses-view-modeline-scrwin view) y x string))
@@ -259,7 +267,8 @@
 (defmethod lem-if:redraw-view-after ((implementation sucle) view focus-window-p)
   (with-view-lock view
     ;;#+nil ;;;FIXME
-    (let ((attr (attribute-to-bits 'lem:modeline)))
+    (let* ((attribute 'lem:modeline)
+	   (attr (attribute-to-bits attribute)))
       #+nil
       (;;charms/ll:attron
        ncurses-clone::ncurses-attron
@@ -267,7 +276,7 @@
       ;;#+nil ;;FIXME:: disabling
       ;;(print view)
       ;;(print ncurses-clone::*std-scr*)
-      (ncurses-clone::with-attributes (attr)
+      (ncurses-clone::with-attributes (attr attribute (typep attribute 'sucle-attribute))
 	(when (and (ncurses-view-modeline-scrwin view)
 		   (< 0 (ncurses-view-x view)))
 	  (;;charms/ll:move
