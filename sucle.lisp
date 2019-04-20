@@ -665,6 +665,10 @@
 		       (when (<= (+ 1 ncurses-clone::*columns*)
 				 (+ width index))
 			 (return-from out))
+		       
+		       (when (typep glyph 'ncurses-clone::extra-big-glyph)
+			 ;;(print (sucle-attribute-overlay glyph))
+			 (handle-extra-big-glyphs glyph index i))
 		       (let* ((attributes (ncurses-clone::glyph-attributes glyph))
 			      #+nil
 			      (pair (ncurses-clone::ncurses-color-pair
@@ -752,3 +756,7 @@
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
     (text-sub::draw-fullscreen-quad)))
+
+(defun handle-extra-big-glyphs (glyph x y)
+  #+nil
+  (print (list glyph x y)))

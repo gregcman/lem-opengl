@@ -217,6 +217,13 @@
       (;;charms/ll:wattron
        ncurses-clone::ncurses-wattron
        (ncurses-view-scrwin view) attr)
+      #+nil
+      (when (typep attribute 'sucle-attribute)
+	(let ((overlay (sucle-attribute-overlay attribute)))
+	  (print (list
+		  (lem:points-to-string
+		   (lem:overlay-start overlay)
+		   (lem:overlay-end overlay))))))
       (ncurses-clone::with-attributes (attr attribute (typep attribute 'sucle-attribute))
 	;;(charms/ll:scrollok (ncurses-view-scrwin view) 0)
 	(;;charms/ll:mvwaddstr
