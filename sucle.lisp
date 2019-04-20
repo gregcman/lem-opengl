@@ -752,17 +752,3 @@
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
     (text-sub::draw-fullscreen-quad)))
-
-#+nil
-(let ((width 
-       (lem-base:char-width char 0)))
-
-  ;;FIXME::have option to turn this off
-  (dotimes (i width)
-    (add-char x y
-	      ;; 0
-	      
-	      
-	      win) ;;FIXME::magically adding a null character
-    (advance)))
-	   ;;(error "what char? ~s" (char-code char))

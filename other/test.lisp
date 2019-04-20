@@ -3,7 +3,8 @@
 (lem:define-command forward2 (&optional (n 1)) ("p")
   (lem:forward-char 1)
   (lem-paredit-mode:paredit-forward n))
-
+;;https://www.gnu.org/software/emacs/manual/html_node/elisp/Interactive-Codes.html
+;;This is what "p" and "r" are for?
 (defun start-lem ()
   (let ((lem::*in-the-editor* nil))
     ;;(lem:main nil)
@@ -27,6 +28,8 @@
       (define-sacred-keys)
       ;;(define-other-keys)
       (lem:define-key lem:*global-keymap* "C-/" 'lem:undo)
+      (lem:define-key lem.language-mode:*language-mode-keymap* "Tab" 'indent-region-or-otherwise)
+      (lem:define-key lem:*global-keymap* "Tab" 'indent-region-or-otherwise)
       (lem:define-key lem-paredit-mode:*paredit-mode-keymap* "C-k" 'lem:kill-sexp)
       (lem:define-key lem-lisp-mode:*lisp-mode-keymap* "C-k" 'lem:kill-sexp)
       (lem:define-key lem-paredit-mode:*paredit-mode-keymap* ")" 'forward2)
@@ -101,9 +104,7 @@
 (defun define-other-keys ()
   (lem:define-key lem:*global-keymap* "C-?" 'lem:describe-key))
 
-(lem:define-command delete-region-or-char ()
-    ;;FIXME ::what is "p" for?
-    ("p")
+(lem:define-command delete-region-or-char () ()
   (let ((buffer (lem:current-buffer)))
     (if (lem:buffer-mark-p buffer)
 	(%delete-region buffer)
@@ -111,9 +112,16 @@
 	 lem-paredit-mode:paredit-backward-delete
 	 (lem:buffer-point buffer)))))
 
-(lem:define-command delete-region ()
-    ;;FIXME ::what is "p" for?
-    ("p")
+(lem:define-command indent-region-or-otherwise () ()
+  (let ((buffer (lem:current-buffer)))
+    (if (lem:buffer-mark-p buffer)
+	(progn
+	  (print 3434)
+	  (lem:indent-region (lem:buffer-mark buffer)
+			     (lem:buffer-point buffer)))
+	(lem.language-mode::indent-line-and-complete-symbol))))
+
+(lem:define-command delete-region () ()
   (let ((buffer (lem:current-buffer)))
     (when (lem:buffer-mark-p buffer)
       (%delete-region buffer))))
