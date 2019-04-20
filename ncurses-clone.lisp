@@ -59,7 +59,16 @@
   ((attribute-data
     :initarg :attribute-data
     :accessor extra-big-glyph-attribute-data
-    :initform nil)))
+    :initform nil)
+   (x
+    :accessor extra-big-glyph-x
+    :initform 0)
+   (y
+    :accessor extra-big-glyph-y
+    :initform 0)))
+(defun print-big-glyph (stream object)
+  (write-char (big-glyph-value object) stream))
+(set-pprint-dispatch 'big-glyph 'print-big-glyph)
 (defun make-extra-big-glyph (&key attribute-data value attributes)
   (make-instance 'extra-big-glyph
 		 :attribute-data attribute-data

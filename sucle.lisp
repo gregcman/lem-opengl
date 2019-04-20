@@ -612,6 +612,7 @@
     (gl:end))
   (when ncurses-clone::*update-p*
     (setf ncurses-clone::*update-p* nil)
+    (reset-some-data)
     ;;Set the title of the window to the name of the current buffer
     (window:set-caption (lem-base:buffer-name (lem:current-buffer)))
     ;;;Copy the virtual screen to a c-array,
@@ -758,12 +759,34 @@
 
     (text-sub::draw-fullscreen-quad)))
 
+(defparameter *some-data*
+  nil
+  ;;(make-hash-table :test 'eq)
+  )
 (defun handle-extra-big-glyphs (glyph x y)
+  (setf (ncurses-clone::extra-big-glyph-x glyph) x
+	(ncurses-clone::extra-big-glyph-y glyph) y)
   (let ((data (ncurses-clone::extra-big-glyph-attribute-data glyph)))
     (destructuring-bind (attribute view) data
-      #+nil
-      (print (list
-	      (ncurses-view-parent-window
-	       view)
-	      attribute
-	      x y)))))
+      (let ((window (ncurses-view-parent-window
+		     view))
+	    (overlay (sucle-attribute-overlay attribute)))
+	(push glyph (getf (getf *some-data* window) overlay))
+	#+nil
+	(multiple-value-bind (overlay-hash existsp) 
+	  (unless existsp
+	    (let ((value (make-hash-table :test 'eq)))
+	      (setf (gethash window *some-data*)
+		    value)
+	      (setf overlay-hash value))))
+	#+nil
+	(when (zerop (random 200))
+	  (print (list
+		  window
+		  overlay
+		  attribute
+		  x y)))))))
+(defun reset-some-data ()
+  (setf *some-data* nil)
+  #+nil
+  (clrhash *some-data*))
