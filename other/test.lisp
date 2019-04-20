@@ -87,6 +87,7 @@
 ;;C-X, C-G, M-X
 (defun define-sacred-keys ()
   (lem:define-key lem:*global-keymap* "Delete" 'delete-region-or-char)
+  (lem:define-key lem:*global-keymap* "Backspace" 'delete-region-or-char)
   (lem:define-key lem:*global-keymap* "C-z" 'lem:undo)
   #+nil
   (progn
@@ -109,8 +110,7 @@
     (if (lem:buffer-mark-p buffer)
 	(%delete-region buffer)
 	(;;lem:delete-character ;;FIXME::dispatch on mode?
-	 lem-paredit-mode:paredit-backward-delete
-	 (lem:buffer-point buffer)))))
+	 lem-paredit-mode:paredit-backward-delete))))
 
 (lem:define-command indent-region-or-otherwise () ()
   (let ((buffer (lem:current-buffer)))

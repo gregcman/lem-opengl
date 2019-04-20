@@ -9,20 +9,85 @@
   (print x))
 
 (defparameter *an-overlay*
-  (lem:make-overlay
+  (our-make-overlay 
    (lem:current-point)
    (lem:save-excursion
-     (lem:forward-char 10)
+     (lem:forward-char 100)
      (lem:copy-point (lem:current-point) :temporary))
-   'lem:modeline))
+   (copy-attribute-to-sucle-attribute 'lem:cursor)))
 
-(lem:delete-overlay *an-overlay*)
-(defun remove-empty-overlay (&optional (overlay *an-overlay*))
+(our-delete-overlay *an-overlay*)
+;;;;
+(defclass sucle-attribute (lem:attribute)
+  ((overlay
+    :initarg :overlay
+    :initform nil
+    :accessor sucle-attribute-overlay)))
+;;;;
+;;data is stored in the overlay plist?
+
+(defun remove-empty-overlay (overlay)
   (when (lem:point=
          (lem:overlay-start overlay)
          (lem:overlay-end overlay))
     (print "removing overlay")
     (lem:delete-overlay overlay)))
-(remove-empty-overlay)
+
+(defparameter *overlays* (make-hash-table :test 'eq))
+(defun remove-overlays-of-buffer (buffer)
+  (remhash buffer *overlays*))
+
+(defun delete-all-overlays ()
+  (utility:dohash (k v) *overlays*
+    (declare (ignorable k))
+    (mapc 'our-delete-overlay v)
+    ;;FIXME::remove the 
+    ))
+
+(delete-all-overlays)
+
+(defun our-make-overlay (start end attribute)
+  (let* ((overlay (lem:make-overlay start end attribute))
+	 (buffer (lem:overlay-buffer overlay)))
+    (unless (gethash buffer *overlays*)
+      (lem:add-hook
+       (lem:variable-value 'lem:kill-buffer-hook :buffer
+                           buffer)
+       'remove-overlays-of-buffer))
+    (setf (sucle-attribute-overlay attribute)
+	  overlay)
+    (push overlay (gethash buffer *overlays*))
+    overlay))
+
+(defun our-delete-overlay (overlay)
+  (let ((buffer (lem:overlay-buffer overlay)))
+    (lem:delete-overlay overlay)
+    (let ((value (gethash buffer *overlays*)))
+      (if value
+          (progn
+            (let ((new-list (delete overlay value)))
+              (if new-list 
+                  (setf (gethash buffer *overlays*)
+                        new-list)
+                  (progn
+                    (remhash buffer *overlays*)
+                    (lem:remove-hook
+                     (lem:variable-value 'lem:kill-buffer-hook :buffer
+                                         buffer)
+                     'remove-overlays-of-buffer))))
+            t)
+          nil))))
+
+(defun copy-attribute-to-sucle-attribute (attribute)
+  (let ((attribute (lem:ensure-attqribute attribute t)))
+    (make-instance
+     'sucle-attribute
+     :underline-p (lem:attribute-underline-p attribute)
+     :bold-p (lem:attribute-bold-p attribute)
+     :reverse-p (lem:attribute-reverse-p attribute)
+     :background (lem:attribute-background attribute)
+     :foreground (lem:attribute-foreground attribute)
+     ))))
+
 ;;TODO:subclass lem:attribute in order to attach extra data to attributes
 ;;have one attribute per overlay?
