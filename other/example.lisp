@@ -96,7 +96,11 @@
                     (lem:remove-hook
                      (lem:variable-value 'lem:kill-buffer-hook :buffer
                                          buffer)
-                     'remove-overlays-of-buffer))))
+                     'remove-overlays-of-buffer)
+                    (lem:remove-hook
+                     (lem:variable-value 'lem:after-change-functions :buffer
+                                         buffer)
+                     'foo))))
             t)
           nil))))
 
