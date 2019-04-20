@@ -134,6 +134,7 @@
     (gl:disable :blend)
 
     (render-stuff)))
+
 (defparameter *output* *standard-output*)
 (defparameter *mouse-last-position* nil)
 
@@ -758,5 +759,11 @@
     (text-sub::draw-fullscreen-quad)))
 
 (defun handle-extra-big-glyphs (glyph x y)
-  #+nil
-  (print (list glyph x y)))
+  (let ((data (ncurses-clone::extra-big-glyph-attribute-data glyph)))
+    (destructuring-bind (attribute view) data
+      #+nil
+      (print (list
+	      (ncurses-view-parent-window
+	       view)
+	      attribute
+	      x y)))))
