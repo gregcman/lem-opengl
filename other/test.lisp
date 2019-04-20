@@ -24,6 +24,8 @@
 				       "#e67128")
 				     :test 'string=)))
     (progn
+      (define-sacred-keys)
+      ;;(define-other-keys)
       (lem:define-key lem:*global-keymap* "C-/" 'lem:undo)
       (lem:define-key lem-paredit-mode:*paredit-mode-keymap* "C-k" 'lem:kill-sexp)
       (lem:define-key lem-lisp-mode:*lisp-mode-keymap* "C-k" 'lem:kill-sexp)
@@ -77,28 +79,74 @@
   (syntax-warning-attribute :foreground "#dbdb95" :bold-p t))
 (in-package :lem-sucle)
 
-(defparameter *packages* nil)
-(defun find-lem-package ()
-  (remove-if-not (lambda (x)
-		   (prefix-p "LEM" 
-			     (package-name x)))
-		 (list-all-packages)))
-;;;FIXME::see cepl.examples/cleanup for similar code
-#+nil
-(setf *packages* (find-lem-package))
-(defun find-variables (&optional (packages *packages*))
-  (let ((acc nil))
-    (dolist (package packages)
-      (do-symbols (sym package)
-	(when (boundp sym)
-	  (when (eq (symbol-package sym)
-		    package)
-	    (push sym acc)))))
-    acc))
+;;https://en.wikipedia.org/wiki/Keyboard_shortcut
+;;FIXME::cross-platform unified interface, or per-OS interface?
+;;C-X, C-G, M-X
+(defun define-sacred-keys ()
+  (lem:define-key lem:*global-keymap* "Delete" 'delete-region-or-char)
+  (lem:define-key lem:*global-keymap* "C-z" 'lem:undo)
+  #+nil
+  (progn
+    (lem:define-key lem:*global-keymap* "C-a" 'lem::mark-set-whole-buffer)
+    (lem:define-key lem:*global-keymap* "C-s" 'lem:save-buffer)
+    (lem:define-key lem:*global-keymap* "C-f" 'lem.isearch:isearch-forward)
+    ;;FIXME::C-G?
+    (lem:define-key lem:*global-keymap* "C-v" 'lem:paste-from-clipboard)
+    (lem:define-key lem:*global-keymap* "C-x" 'delete-region)
+    (lem:define-key lem:*global-keymap* "C-c" 'lem:copy-region))
 
-(defun prefix-p (prefix string)
-  "test whether prefix is a prefix of string"
-  (let ((len (length prefix)))
-    (search prefix string
-	    :start1 0 :end1 len
-	    :start2 0 :end2 (min len (length string)))))
+  ;;(lem:define-key lem:*global-keymap* "C-c" 'lem:yank)
+  )
+
+(defun define-other-keys ()
+  (lem:define-key lem:*global-keymap* "C-?" 'lem:describe-key))
+
+(lem:define-command delete-region-or-char ()
+    ;;FIXME ::what is "p" for?
+    ("p")
+  (let ((buffer (lem:current-buffer)))
+    (if (lem:buffer-mark-p buffer)
+	(%delete-region buffer)
+	(;;lem:delete-character ;;FIXME::dispatch on mode?
+	 lem-paredit-mode:paredit-backward-delete
+	 (lem:buffer-point buffer)))))
+
+(lem:define-command delete-region ()
+    ;;FIXME ::what is "p" for?
+    ("p")
+  (let ((buffer (lem:current-buffer)))
+    (when (lem:buffer-mark-p buffer)
+      (%delete-region buffer))))
+
+
+(defun %delete-region (buffer)
+  (lem:delete-between-points
+   (lem:buffer-mark buffer)
+   (lem:buffer-point buffer)))
+
+#+nil ;;FIXME::remove this unused code?
+(progn
+  (defparameter *packages* nil)
+  (defun find-lem-package ()
+    (remove-if-not (lambda (x)
+		     (prefix-p "LEM" 
+			       (package-name x)))
+		   (list-all-packages)))
+;;;FIXME::see cepl.examples/cleanup for similar code
+  #+nil
+  (setf *packages* (find-lem-package))
+  (defun find-variables (&optional (packages *packages*))
+    (let ((acc nil))
+      (dolist (package packages)
+	(do-symbols (sym package)
+	  (when (boundp sym)
+	    (when (eq (symbol-package sym)
+		      package)
+	      (push sym acc)))))
+      acc))
+  (defun prefix-p (prefix string)
+    "test whether prefix is a prefix of string"
+    (let ((len (length prefix)))
+      (search prefix string
+	      :start1 0 :end1 len
+	      :start2 0 :end2 (min len (length string))))))
