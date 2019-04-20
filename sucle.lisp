@@ -247,6 +247,7 @@
 			(p2 *grid-mouse-x*)
 			(difference (- p2 p1)))
 		   (unless (zerop difference)
+		     (reorder-window-tree)
 		     (if (plusp difference)
 			 (dotimes (i difference)			   
 			   (lem:grow-window-horizontally 1))
@@ -261,6 +262,7 @@
 			(p2 *grid-mouse-y*)
 			(difference (- p2 p1)))
 		   (unless (zerop difference)
+		     (reorder-window-tree)
 		     (if (plusp difference)
 			 (dotimes (i difference)
 			   (lem:grow-window 1))
@@ -275,6 +277,32 @@
       (handle-drag-select-region pressing just-pressed)
       ;;save the mouse position for next tick
       (setf *mouse-last-position* coord))))
+
+(defun reorder-window-tree (&optional (window-tree (lem::window-tree)))
+  (labels ((f (tree)
+             (cond ((lem::window-tree-leaf-p tree)
+                    ;;(funcall fn tree)
+		    )
+                   (t
+		    (one-swap-window tree)
+                    (f (lem::window-node-car tree))
+                    (f (lem::window-node-cdr tree))))))
+    (f window-tree)
+    (values)))
+
+(defun one-swap-window (instance)
+  (let ((car (lem::window-node-car instance)))
+    (when (and (lem::window-node-p car)
+	       (eq (lem::window-node-split-type car)
+		   (lem::window-node-split-type instance)))
+      ;;(print "reordering windows")
+      (let ((a (lem::window-node-car car))
+	    (b (lem::window-node-cdr car))
+	    (c (lem::window-node-cdr instance)))
+	(setf (lem::window-node-car instance) a)
+	(setf (lem::window-node-cdr instance) car)
+	(setf (lem::window-node-car car) b)
+	(setf (lem::window-node-cdr car) c)))))
 
 (defun safe-point= (point-a point-b)
   (and

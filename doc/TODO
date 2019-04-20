@@ -43,3 +43,4 @@
 ;;the cursor can leave the screen. Scrolling on wrapping lines causes window to jump up
 
 ;;FIXME::improper window draggin when 3 or more divisions
+;;FIXME::still improper window dragging. has to do with window tree structure?
