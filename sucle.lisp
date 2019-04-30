@@ -1,15 +1,20 @@
 (in-package :lem-sucle)
 
-(defparameter *glyph-height* (deflazy::make-number-node 16.0))
-(defparameter *glyph-width* (deflazy::make-number-node 8.0))
+(defparameter *glyph-height* 16.0)
+(defparameter *glyph-width* 8.0)
+
+(application::deflazy (glyph-width :unchanged-if =) ()
+  *glyph-width*)
+(application::deflazy (glyph-height :unchanged-if =) ()
+  *glyph-height*)
 
 (defparameter *queue* nil)
 (application::deflazy event-queue ()
   (setf *queue* (lparallel.queue:make-queue)))
 (application::deflazy virtual-window ((w application::w) (h application::h) (event-queue event-queue))
   (lparallel.queue:push-queue :resize event-queue)
-  (setf ncurses-clone::*columns* (floor w (deflazy::%getfnc *glyph-width*))
-	ncurses-clone::*lines* (floor h (deflazy::%getfnc *glyph-height*)))
+  (setf ncurses-clone::*columns* (floor w (deflazy::getfnc 'glyph-width))
+	ncurses-clone::*lines* (floor h (deflazy::getfnc 'glyph-height)))
   ;;(ncurses-clone::reset-standard-screen)
   (ncurses-clone::with-virtual-window-lock
     (ncurses-clone::ncurses-wresize ncurses-clone::*std-scr*
@@ -38,18 +43,26 @@
 		      (per-frame editor-thread out-token)))))
 	   (exit-editor (c) (return-from out c))))))
    :width (floor (* ncurses-clone::*columns*
-		    (deflazy::%getfnc *glyph-width*)))
+		    (deflazy::getfnc 'glyph-width)))
    :height (floor (* ncurses-clone::*lines*
-		     (deflazy::%getfnc *glyph-height*)))
+		     (deflazy::getfnc 'glyph-height)))
    :title "lem is an editor for Common Lisp"
    :resizable t))
 
 (defun set-glyph-dimensions (w h)
   ;;Set the pixel dimensions of a 1 wide by 1 high character
-  (setf (deflazy::%getfnc *glyph-width*) w)
-  (setf (deflazy::%getfnc text-sub::*block-width*) w)
-  (setf (deflazy::%getfnc *glyph-height*) h)
-  (setf (deflazy::%getfnc text-sub::*block-height*) h))
+  (progn
+    (setf *glyph-width* w)
+    (deflazy::refresh 'glyph-width))
+  (progn
+    (setf text-sub::*block-width* w)
+    (deflazy::refresh 'text-sub::block-width))
+  (progn
+    (setf *glyph-height* h)
+    (deflazy::refresh 'glyph-height))
+  (progn
+    (setf text-sub::*block-height* h)
+    (deflazy::refresh 'text-sub::block-height)))
 
 (defparameter *redraw-display-p* nil)
 (defun redraw-display ()
@@ -147,8 +160,8 @@
 (defparameter *grid-mouse-y* nil)
 (defun calculate-cursor-coordinate ()
   ;;For some reason, the coordinate of the mouse is off by 1,1?
-  (let ((glyph-width (deflazy::%getfnc *glyph-width*))
-	(glyph-height (deflazy::%getfnc *glyph-height*)))
+  (let ((glyph-width (deflazy::getfnc 'glyph-width))
+	(glyph-height (deflazy::getfnc 'glyph-height)))
     (setf *grid-mouse-x*
 	  (floor (- window::*mouse-x* 1)
 		 glyph-width))
