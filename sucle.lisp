@@ -53,16 +53,16 @@
   ;;Set the pixel dimensions of a 1 wide by 1 high character
   (progn
     (setf *glyph-width* w)
-    (deflazy::refresh 'glyph-width))
+    (deflazy::refresh 'glyph-width nil))
   (progn
     (setf text-sub::*block-width* w)
-    (deflazy::refresh 'text-sub::block-width))
+    (deflazy::refresh 'text-sub::block-width nil))
   (progn
     (setf *glyph-height* h)
-    (deflazy::refresh 'glyph-height))
+    (deflazy::refresh 'glyph-height nil))
   (progn
     (setf text-sub::*block-height* h)
-    (deflazy::refresh 'text-sub::block-height)))
+    (deflazy::refresh 'text-sub::block-height nil)))
 
 (defparameter *redraw-display-p* nil)
 (defun redraw-display ()
@@ -83,8 +83,8 @@
 	(print (mapcar (lambda (x) (/ (utility::floatify x) 255.0))
 		       (nbutlast (aref lem.term::*colors* n))))))
      )
-    (application::refresh 'virtual-window)
-    (application::refresh 'event-queue)
+    (application::refresh 'virtual-window nil)
+    (application::refresh 'event-queue nil)
     (window::set-vsync t)
     ;;(lem.term::reset-color-pair)
     )
