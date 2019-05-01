@@ -11,10 +11,13 @@
 (defparameter *queue* nil)
 (application::deflazy event-queue ()
   (setf *queue* (lparallel.queue:make-queue)))
-(application::deflazy virtual-window ((w application::w) (h application::h) (event-queue event-queue))
-  (lparallel.queue:push-queue :resize event-queue)
-  (setf ncurses-clone::*columns* (floor w (deflazy::getfnc 'glyph-width))
-	ncurses-clone::*lines* (floor h (deflazy::getfnc 'glyph-height)))
+(application::deflazy (columns :unchanged-if =) ((w application::w) glyph-width)
+  (floor w glyph-width))
+(application::deflazy (lines :unchanged-if =) ((h application::h) glyph-height)
+  (floor h glyph-height))
+(application::deflazy virtual-window (columns lines (event-queue event-queue))
+  (setf ncurses-clone::*columns* columns
+	ncurses-clone::*lines* lines)
   ;;(ncurses-clone::reset-standard-screen)
   (ncurses-clone::with-virtual-window-lock
     (ncurses-clone::ncurses-wresize ncurses-clone::*std-scr*
@@ -22,7 +25,8 @@
 				    ncurses-clone::*columns*)
     #+nil
     (setf ncurses-clone::*virtual-window*
-	  (ncurses-clone::make-virtual-window))))
+	  (ncurses-clone::make-virtual-window)))
+  (lparallel.queue:push-queue :resize event-queue))
 
 (defparameter *saved-session* nil)
 (defun input-loop (&optional (editor-thread lem-sucle::*editor-thread*))
