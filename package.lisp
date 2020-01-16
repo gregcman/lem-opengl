@@ -1,2 +1,2 @@
 (defpackage :lem-sucle
-  (:use :cl))
+  (:use :cl :ncurses-clone-for-lem))

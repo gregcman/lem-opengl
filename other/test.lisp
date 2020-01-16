@@ -24,6 +24,7 @@
 				       "#212931" "#729fcf" "#23d7d7" "#ffad29"
 				       "#e67128")
 				     :test 'string=)))
+    (lem.term::regen-color-array)
     (progn
       (define-sacred-keys)
       ;;(define-other-keys)

@@ -1,4 +1,15 @@
-(in-package :lem-sucle)
+(defpackage #:ncurses-clone-for-lem
+  (:use :cl)
+  (:export
+   #:*glyph-height*
+   #:*glyph-width*
+   #:*redraw-display-p*
+   #:*resized-p*
+   #:init
+   #:redraw-display
+   #:render
+   #:window-size))
+(in-package :ncurses-clone-for-lem)
 (defparameter *glyph-height* 16.0)
 (defparameter *glyph-width* 8.0)
 
@@ -27,7 +38,6 @@
   (setf *resized-p* t))
 
 (defun init ()
-  (lem.term:term-init)
   (setf ncurses-clone::*columns* 80
 	ncurses-clone::*lines* 25)
   (set-glyph-dimensions 8 16)
@@ -61,7 +71,7 @@
   (setf *redraw-display-p* t))
 
 
-(defun render-stuff
+(defun render
     (&key (ondraw (lambda ())) (big-glyph-fun 'identity))
   ;;Make sure the virtual window has the correct specs
   (deflazy::getfnc 'virtual-window)

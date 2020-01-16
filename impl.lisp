@@ -37,8 +37,8 @@
 	    (not (bt:thread-alive-p *editor-thread*)))
     (print "starting editor thread")
     (let (;;(result nil)
-	  (input-thread (bt:current-thread))
-	  )
+	  (input-thread (bt:current-thread)))
+      (setf ncurses-clone::*char-width-at-fun* #'lem-base:char-width)
       (setf *editor-thread*
 	    (funcall function
 		     nil

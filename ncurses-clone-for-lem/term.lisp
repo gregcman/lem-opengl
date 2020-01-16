@@ -842,15 +842,15 @@
     (charms/ll:mousemask 0)))
 
 
-(defvar *colors*)
 
 (defun color-red (color) (first color))
 (defun color-green (color) (second color))
 (defun color-blue (color) (third color))
 (defun color-number (color) (fourth color))
 
-(defun init-colors (n)
-  (let ((counter 0))
+(defun gen-color-array (n)
+  (let ((counter 0)
+	(array (make-array n)))
     (flet ((add-color (r g b)
 	     #+nil
              (when (<= 8 counter)
@@ -858,14 +858,15 @@
                                      (round (* r 1000/255))
                                      (round (* g 1000/255))
                                      (round (* b 1000/255))))
-             (setf (aref *colors* counter) (list r g b counter))
+             (setf (aref array counter) (list r g b counter))
              (incf counter)))
-      (setf *colors* (make-array n))
+      (setf array (make-array n))
       (dotimes (i n)
 	(apply #'add-color
 	       (mapcar (lambda (x)
 			 (floor (* x 255)))
-		       (multiple-value-list (color-fun i))))))))
+		       (multiple-value-list (color-fun i))))))
+    (values array)))
 
 (defun rgb-to-hsv (r g b)
   (let ((max (max r g b))
@@ -891,6 +892,76 @@
             (s (abs (- s1 s2)))
             (v (abs (- v1 v2))))
         (+ (* h h) (* s s) (* v v))))))
+
+(defun c6? (x)
+  (let ((acc nil))
+    (loop
+       (push (mod x 6) acc)
+       (setf x (floor x 6))
+       (when (zerop x)
+	 (return)))
+    acc))
+
+
+(defparameter *ansi-color-names-vector* nil)
+(defun color-fun (color)
+  (labels ((bcolor (r g b)
+	     (values (/ (utility::floatify r) 255.0)
+		     (/ (utility::floatify g) 255.0)
+		     (/ (utility::floatify b) 255.0)))
+	   (c (r g b)
+	     (bcolor r g b))
+	   (c6 (x)
+	     (destructuring-bind (r g b) (last (append (list 0 0 0)
+						       (c6? x))
+					       3)
+	       (bcolor (* 51 r)
+		       (* 51 g)
+		       (* 51 b))))
+	   (g (x)
+	     (let* ((magic (load-time-value (/ 255.0 23.0)))
+		    (val (* x magic)))
+	       (c val val val))))
+    
+    (let ((color-data (nth color *ansi-color-names-vector*)))
+      (when color-data
+	(return-from color-fun (apply #'c color-data))))
+    ;;FIXME::the case statement below goes through redundant numbers?
+    (case color
+      (0 (c 0 0 0))
+      (1 (c 205 0 0))
+      (2 (c 0 205 0))
+      (3 (c 205 205 0))
+      (4 (c 0 0 238))
+      (5 (c 205 0 205))
+      (6 (c 0 205 205))
+      (7 (c 229 229 229))
+      (8 (c 127 127 127))
+      (9 (c 255 0 0))
+      (10 (c 0 255 0))
+      (11 (c 255 255 0))
+      (12 (c 92 92 255))
+      (13 (c 255 0 255))
+      (14 (c 0 255 255))
+      (15 (c 255 255 255))
+      (t (if (< color (+ 16 (* 6 6 6)))
+	     (c6 (- color 16))
+	     (g (- color (+ 16 (* 6 6 6)))))))))
+
+#+nil
+(defun detect-distance ()
+  (map 'list
+       (lambda (x y)
+	 (mapcar '- x y))
+       (mapcar (lambda (x) (mapcar (lambda (x) (* x 255))
+				   (multiple-value-list (color-fun x))))
+	       (alexandria:iota 256))
+       *colors*))
+
+
+(defparameter *colors* (gen-color-array 256))
+(defun regen-color-array ()
+  (setf *colors* (gen-color-array 256)))
 
 (defun get-color-rgb (r g b)
   (let ((min most-positive-fixnum)
@@ -1049,7 +1120,7 @@
     (cffi:with-foreign-string (term "xterm")
       (charms/ll:newterm term io io))))
 
-
+#+nil
 (defun term-init ()
   #+(or (and ccl unix) (and lispworks unix))
   (lem-setlocale/cffi:setlocale lem-setlocale/cffi:+lc-all+ "")
@@ -1131,67 +1202,3 @@ The echo and noecho routines control whether characters typed by the user are ec
   (charms/ll:endwin)
   (charms/ll:delscreen charms/ll:*stdscr*))
 
-(defun c6? (x)
-  (let ((acc nil))
-    (loop
-       (push (mod x 6) acc)
-       (setf x (floor x 6))
-       (when (zerop x)
-	 (return)))
-    acc))
-
-
-(defparameter *ansi-color-names-vector* nil)
-(defun color-fun (color)
-  (labels ((bcolor (r g b)
-	     (values (/ (utility::floatify r) 255.0)
-		     (/ (utility::floatify g) 255.0)
-		     (/ (utility::floatify b) 255.0)))
-	   (c (r g b)
-	     (bcolor r g b))
-	   (c6 (x)
-	     (destructuring-bind (r g b) (last (append (list 0 0 0)
-						       (c6? x))
-					       3)
-	       (bcolor (* 51 r)
-		       (* 51 g)
-		       (* 51 b))))
-	   (g (x)
-	     (let* ((magic (load-time-value (/ 255.0 23.0)))
-		    (val (* x magic)))
-	       (c val val val))))
-    
-    (let ((color-data (nth color *ansi-color-names-vector*)))
-      (when color-data
-	(return-from color-fun (apply #'c color-data))))
-    ;;FIXME::the case statement below goes through redundant numbers?
-    (case color
-      (0 (c 0 0 0))
-      (1 (c 205 0 0))
-      (2 (c 0 205 0))
-      (3 (c 205 205 0))
-      (4 (c 0 0 238))
-      (5 (c 205 0 205))
-      (6 (c 0 205 205))
-      (7 (c 229 229 229))
-      (8 (c 127 127 127))
-      (9 (c 255 0 0))
-      (10 (c 0 255 0))
-      (11 (c 255 255 0))
-      (12 (c 92 92 255))
-      (13 (c 255 0 255))
-      (14 (c 0 255 255))
-      (15 (c 255 255 255))
-      (t (if (< color (+ 16 (* 6 6 6)))
-	     (c6 (- color 16))
-	     (g (- color (+ 16 (* 6 6 6)))))))))
-
-#+nil
-(defun detect-distance ()
-  (map 'list
-       (lambda (x y)
-	 (mapcar '- x y))
-       (mapcar (lambda (x) (mapcar (lambda (x) (* x 255))
-				   (multiple-value-list (color-fun x))))
-	       (alexandria:iota 256))
-       *colors*))

@@ -510,9 +510,13 @@ If ch is a tab, newline, or backspace, the cursor is moved appropriately within 
 	       (otherwise (add-thing x y *widechar-placeholder* win)))
 	     (advance))))))))
 
+(defparameter *char-width-at-fun* nil)
 (defun char-width-at (char xpos)
-  (- (lem-base:char-width char xpos)
-     xpos))
+  (let ((fun *char-width-at-fun*))
+    (if fun
+	(- (funcall fun char xpos)
+	   xpos)
+	1)))
 (defun next-8 (n)
   "this is for tabbing, see waddch. its every 8th column"
   (* 8 (+ 1 (floor n 8))))

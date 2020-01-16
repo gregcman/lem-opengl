@@ -74,7 +74,7 @@
     (lem:redraw-display))
 
   ;;Rendering. Comes after input handling because things could have changed
-  (render-stuff
+  (render
    :ondraw
    (lambda ()
      ;;Set the title of the window to the name of the current buffer
