@@ -86,33 +86,13 @@
     (if (null attribute)
         0
         (or (lem::attribute-%internal-value attribute)
-            (let* ((foreground (lem:attribute-foreground attribute))
-                   (background (lem:attribute-background attribute))
-                   (bits (logior
-			  ;;FIXME::fragile bit layout
-			  (multiple-value-bind (color existsp)
-			      (lem.term::get-color foreground)
-			    (if existsp
-				(logior color (load-time-value (ash 1 8)))
-				ncurses-clone::*fg-default*))
-			  (ash (multiple-value-bind (color existsp)
-				   (lem.term::get-color background)
-				 (if existsp
-				     (logior color (load-time-value (ash 1 8)))
-				     ncurses-clone::*bg-default*))
-			       9)
-			  ;;(lem.term:get-color-pair foreground background)
-			  (if (lem::attribute-bold-p attribute)
-			      ;;charms/ll:a_bold
-			      ncurses-clone::a_bold
-			      0)
-			  (if (lem::attribute-underline-p attribute)
-			      ;;charms/ll:a_underline
-			      ncurses-clone::a_underline
-			      0)
-			  (if  (lem::attribute-reverse-p attribute)
-			       ncurses-clone::a_reverse
-			       0))))
+            (let ((bits
+		   (lem.term::get-attribute-bits-2
+		    (lem:attribute-foreground attribute)
+		    (lem:attribute-background attribute)
+		    (lem::attribute-bold-p attribute)
+		    (lem::attribute-underline-p attribute)
+		    (lem::attribute-reverse-p attribute))))
               (setf (lem::attribute-%internal-value attribute) bits)
               bits)))))
 
