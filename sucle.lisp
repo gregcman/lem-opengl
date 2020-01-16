@@ -132,7 +132,7 @@
     (gl:disable :cull-face)
     (gl:disable :depth-test)
     (gl:disable :blend)
-
+    
     (render-stuff)))
 
 (defparameter *output* *standard-output*)
@@ -757,7 +757,8 @@
       (gl:enable :blend)
       (gl:blend-func :src-alpha :one-minus-src-alpha))
 
-    (text-sub::draw-fullscreen-quad)))
+    (text-sub::draw-fullscreen-quad)
+    ))
 
 (defparameter *some-data*
   nil

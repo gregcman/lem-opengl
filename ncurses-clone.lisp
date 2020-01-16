@@ -1,3 +1,5 @@
+(defpackage #:ncurses-clone
+  (:use #:cl))
 (in-package :ncurses-clone)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
