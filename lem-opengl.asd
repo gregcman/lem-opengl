@@ -25,6 +25,7 @@
 	       
 	       (:file "impl")
 	       (:file "keys")
+	       (:file "app")
                (:file "sucle")
 	       (:module "other"
 			:components
