@@ -154,16 +154,9 @@
 (defun clear-window-intersection ()
   (setf *window-last-clicked-at* *null-window-intersection*))
 (defun left-click-event ()
-  (let ((just-pressed (window::skey-j-p
-		       (window::mouseval :left)
-		       window::*control-state*))
-	(just-released (window::skey-j-r
-			(window::mouseval :left)
-			window::*control-state*))
-	(pressing 
-	 (window::skey-p
-	  (window::mouseval :left)
-	  window::*control-state*)))
+  (let ((just-pressed (window:button :mouse :pressed :left window::*control-state*))
+	(just-released (window:button :mouse :released :left window::*control-state*))
+	(pressing (window:button :mouse :down :left window::*control-state*)))
     (let* ((coord (list *grid-mouse-x* *grid-mouse-y*))
 	   (coord-change
 	    (not (equal coord
@@ -518,7 +511,7 @@
 	    :sym (lem:key-sym key)
 	    :ctrl (or (lem:key-ctrl key)
 		      (logtest window::+control+ mods)
-		      (window:skey-p (window::keyval :escape))
+		      (window:button :key :down :escape)
 		      ;;FIXME:: escape used as substitute for control, specifically windows.
 		      ;;see below for same info.
 		      )
