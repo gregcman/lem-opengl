@@ -39,7 +39,6 @@
     (let (;;(result nil)
 	  (input-thread (bt:current-thread))
 	  )
-      (lem.term:term-init)
       (setf *editor-thread*
 	    (funcall function
 		     nil

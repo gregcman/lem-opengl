@@ -2,14 +2,12 @@
 
 (defparameter *saved-session* nil)
 (defun input-loop (&optional (editor-thread lem-sucle::*editor-thread*))
-  (setf ncurses-clone::*columns* 80
-	ncurses-clone::*lines* 25)
   (setf application::*main-subthread-p* nil)
-  (set-glyph-dimensions 8 16)
-  (application::main
-   (lambda ()
-     (block out
-       (let ((text-sub::*text-data-what-type* :texture-2d))
+  (destructuring-bind (width height) (window-size)
+    (application::main
+     (lambda ()
+       (init)
+       (block out
 	 (handler-case
 	     (let ((out-token (list "good" "bye")))
 	       (catch out-token
@@ -17,13 +15,11 @@
 		    (livesupport:update-repl-link)
 		    (livesupport:continuable
 		      (per-frame editor-thread out-token)))))
-	   (exit-editor (c) (return-from out c))))))
-   :width (floor (* ncurses-clone::*columns*
-		    *glyph-width*))
-   :height (floor (* ncurses-clone::*lines*
-		     *glyph-height*))
-   :title "lem is an editor for Common Lisp"
-   :resizable t))
+	   (exit-editor (c) (return-from out c)))))
+     :width width
+     :height height
+     :title "lem is an editor for Common Lisp"
+     :resizable t)))
 
 
 (defparameter *last-scroll* 0)
@@ -33,9 +29,7 @@
 (defun per-frame (editor-thread out-token)
   (declare (ignorable editor-thread))
   (application::on-session-change *saved-session*
-    (window::set-vsync t)
-    (on-session-change))
-  (ensure-virtual-window-and-event-queue)
+    (window::set-vsync t))
   (application:poll-app)
   (when *run-sucle*
     (unwind-protect
@@ -52,7 +46,9 @@
 	(when window::*status*
 	  ;;(bt:thread-alive-p editor-thread)
 	  (throw out-token nil))
-	(resize-event 'lem:send-event)
+	(when *resized-p*
+	  (setf *resized-p* nil)
+	  (lem:send-event :resize))
 	(scroll-event)
 	(input-events)
 	;;#+nil
@@ -79,15 +75,14 @@
 
   ;;Rendering. Comes after input handling because things could have changed
   (render-stuff
-   0
-   0
-   window::*width*
-   window::*height*
+   :ondraw
    (lambda ()
+     ;;Set the title of the window to the name of the current buffer
+     (window:set-caption (lem-base:buffer-name (lem:current-buffer)))
      (setf *some-data* nil)
      #+nil
      (clrhash *some-data*))
-   (lem-base:buffer-name (lem:current-buffer))
+   :big-glyph-fun
    'save-special-glyphs
    ))
 (defparameter *some-data*

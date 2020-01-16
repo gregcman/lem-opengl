@@ -2,12 +2,9 @@
 (defparameter *glyph-height* 16.0)
 (defparameter *glyph-width* 8.0)
 
-;;;;Event queue for resizing
-(defparameter *queue* nil)
-(deflazy::deflazy event-queue ()
-  (setf *queue* (lparallel.queue:make-queue)))
-(deflazy::deflazy virtual-window ((w application::w) (h application::h) (event-queue event-queue))
-  (lparallel.queue:push-queue :resize event-queue)
+(defparameter *resized-p* nil)
+(deflazy::deflazy virtual-window ((w application::w) (h application::h))
+  (setf *resized-p* t)
   (setf ncurses-clone::*columns* (floor w *glyph-width*)
 	ncurses-clone::*lines* (floor h *glyph-height*))
   ;;(ncurses-clone::reset-standard-screen)
@@ -17,7 +14,35 @@
 				    ncurses-clone::*columns*)
     #+nil
     (setf ncurses-clone::*virtual-window*
-	  (ncurses-clone::make-virtual-window)))) 
+	  (ncurses-clone::make-virtual-window))))
+
+(defun window-size ()
+  (mapcar 'floor
+	  (list (* ncurses-clone::*columns*
+		   *glyph-width*)
+		(* ncurses-clone::*lines*
+		   *glyph-height*))))
+
+(defun update-resize ()
+  (setf *resized-p* t))
+
+(defun init ()
+  (lem.term:term-init)
+  (setf ncurses-clone::*columns* 80
+	ncurses-clone::*lines* 25)
+  (set-glyph-dimensions 8 16)
+  (setf text-sub::*text-data-what-type* :texture-2d)
+  (deflazy::refresh 'virtual-window)
+  (update-resize)
+  (text-sub::change-color-lookup
+   ;;'text-sub::color-fun
+   'lem.term::color-fun
+   #+nil
+   (lambda (n)
+     (values-list
+      (print (mapcar (lambda (x) (/ (utility::floatify x) 255.0))
+		     (nbutlast (aref lem.term::*colors* n))))))
+   ))
 
 (defun set-glyph-dimensions (w h)
   ;;Set the pixel dimensions of a 1 wide by 1 high character
@@ -35,44 +60,17 @@
 (defun redraw-display ()
   (setf *redraw-display-p* t))
 
-(defun on-session-change ()
-  (text-sub::change-color-lookup
-   ;;'text-sub::color-fun
-   'lem.term::color-fun
-   #+nil
-   (lambda (n)
-     (values-list
-      (print (mapcar (lambda (x) (/ (utility::floatify x) 255.0))
-		     (nbutlast (aref lem.term::*colors* n))))))
-   )
-  (deflazy::refresh 'virtual-window)
-  (deflazy::refresh 'event-queue)
-  
-  ;;(lem.term::reset-color-pair)
-  )
-
-(defun resize-event (&optional (function #'identity))
-  (block out
-    ;;currently this pops :resize events
-    (loop (multiple-value-bind (event exists)
-	      (lparallel.queue:try-pop-queue *queue*)
-	    (if exists
-		(funcall function event)
-		(return-from out))))))
-
-(defun ensure-virtual-window-and-event-queue ()
-  (deflazy::getfnc 'virtual-window)
-  (deflazy::getfnc 'event-queue))
-
 
 (defun render-stuff
-    (x0 y0 x1 y1 &optional (ondraw (lambda ())) (title "Foo") (big-glyph-fun 'identity))
+    (&key (ondraw (lambda ())) (big-glyph-fun 'identity))
+  ;;Make sure the virtual window has the correct specs
+  (deflazy::getfnc 'virtual-window)
   #+nil
   (;;text-sub::with-data-shader (uniform rebase)
    ;; (gl:clear :color-buffer-bit)
- ;;   (gl:disable :depth-test)
-    #+nil
-    (rebase -128.0 -128.0))
+   ;;   (gl:disable :depth-test)
+   #+nil
+   (rebase -128.0 -128.0))
   #+nil
   (gl:point-size 1.0)
 
@@ -94,8 +92,6 @@
   (when ncurses-clone::*update-p*
     (setf ncurses-clone::*update-p* nil)
     (funcall ondraw)
-    ;;Set the title of the window to the name of the current buffer
-    (window:set-caption title)
     ;;;Copy the virtual screen to a c-array,
     ;;;then send the c-array to an opengl texture
     (let* ((c-array-lines
@@ -234,7 +230,9 @@
      (load-time-value (nsb-cga:identity-matrix))
      nil)   
     (glhelp::bind-default-framebuffer)
-    (glhelp:set-render-area x0 y0 x1 y1)
+    (glhelp:set-render-area 0 0
+			    (deflazy::getfnc 'application::w)
+			    (deflazy::getfnc 'application::h))
     #+nil
     (progn
       (gl:enable :blend)
